@@ -1,0 +1,18 @@
+ingest:
+  data_dir: data/raw_pdfs
+  output_path: data/processed_data/raw_documents.pkl
+
+chunk:
+  chunk_size: 1000
+  chunk_overlap: 200
+  output_path: data/processed_data/document_chunks.pkl
+
+embed:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  collection_name: saudi_vision_2030
+  qdrant_url: http://localhost:6333
+  batch_size: 100
+
+evaluate:
+  k: 3
+  output_path: data/evaluation/evaluation_scores.json

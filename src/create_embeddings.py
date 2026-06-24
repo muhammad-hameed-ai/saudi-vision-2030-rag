@@ -1,36 +1,45 @@
 import os
 import pickle
+import yaml
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 
-PROCESSED_DATA_DIR = "data/processed_data"
-CHUNKS_PATH = os.path.join(PROCESSED_DATA_DIR, "document_chunks.pkl")
+
+def load_params():
+    with open("params.yaml") as f:
+        return yaml.safe_load(f)
+
 
 def main():
-    print("Loading production text chunks from disk...")
-    with open(CHUNKS_PATH, "rb") as f:
-        chunks = pickle.load(f)
-        
-    print(f"Loaded {len(chunks)} chunks ready for vectorization.")
+    params = load_params()
+    chunk_cfg = params["chunk"]
+    embed_cfg  = params["embed"]
 
-    print("Initializing the Embedding Model...")
+    print(f"Loading chunks from {chunk_cfg['output_path']}...")
+    with open(chunk_cfg["output_path"], "rb") as f:
+        chunks = pickle.load(f)
+    print(f"Loaded {len(chunks)} chunks")
+
+    print(f"Initializing embedding model: {embed_cfg['model_name']}")
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'}
+        model_name=embed_cfg["model_name"],
+        model_kwargs={"device": "cpu"}
     )
 
-    print("Connecting to local Qdrant Vector Database on port 6333...")
-    print("Uploading data... This will take a few minutes depending on your CPU.")
-    
-    # Using the modern QdrantVectorStore class
+    print(f"Connecting to Qdrant at {embed_cfg['qdrant_url']}...")
+    print(f"Uploading {len(chunks)} chunks to collection '{embed_cfg['collection_name']}'...")
+
     qdrant = QdrantVectorStore.from_documents(
         documents=chunks,
         embedding=embeddings,
-        url="http://localhost:6333",
-        collection_name="saudi_vision_2030",
+        url=embed_cfg["qdrant_url"],
+        collection_name=embed_cfg["collection_name"],
+        force_recreate=True,
     )
-    
-    print("\n✅ Success! All chunks are embedded and securely stored in Qdrant.")
+
+    print(f"Successfully embedded {len(chunks)} chunks into Qdrant")
+    return len(chunks)
+
 
 if __name__ == "__main__":
     main()

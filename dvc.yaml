@@ -1,0 +1,38 @@
+stages:
+
+  ingest:
+    cmd: python src/ingest_data.py
+    deps:
+      - src/ingest_data.py
+      - data/raw_pdfs
+    params:
+      - ingest.data_dir
+      - ingest.output_path
+    outs:
+      - data/processed_data/raw_documents.pkl
+
+  chunk:
+    cmd: python src/evaluate_chunking.py
+    deps:
+      - src/evaluate_chunking.py
+      - data/processed_data/raw_documents.pkl
+    params:
+      - chunk.chunk_size
+      - chunk.chunk_overlap
+      - chunk.output_path
+    outs:
+      - data/processed_data/document_chunks.pkl
+    metrics:
+      - data/processed_data/chunk_metrics.json:
+          cache: false
+
+  embed:
+    cmd: python src/create_embeddings.py
+    deps:
+      - src/create_embeddings.py
+      - data/processed_data/document_chunks.pkl
+    params:
+      - embed.model_name
+      - embed.collection_name
+      - embed.qdrant_url
+

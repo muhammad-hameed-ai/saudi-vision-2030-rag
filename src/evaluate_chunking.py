@@ -1,84 +1,74 @@
 import os
 import pickle
+import yaml
 import re
-from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_experimental.text_splitter import SemanticChunker
-from langchain_community.embeddings import HuggingFaceEmbeddings
 
-DATA_DIR = "data/raw_pdfs"
-OUTPUT_DIR = "data/processed_data"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+def load_params():
+    with open("params.yaml") as f:
+        return yaml.safe_load(f)
+
 
 def clean_and_tag_text(text):
-    """
-    Preprocesses text to identify structural elements like tables and headers
-    before chunking occurs.
-    """
-    # Regex to capture possible table rows (e.g., numbers separated by multiple spaces or pipes)
-    table_pattern = re.compile(r'(?:\|\s*.+\s*\|)+|(?:\w+\s{2,}\d+[\d\s,.]*)')
-    
-    # Tag potential structural blocks to preserve context
+    table_pattern = re.compile(
+        r'(?:\|\s*.+\s*\|)+|(?:\w+\s{2,}\d+[\d\s,.]*)'
+    )
     lines = text.split("\n")
-    processed_lines = []
+    processed = []
     for line in lines:
         if table_pattern.match(line.strip()):
-            processed_lines.append(f"[TABLE_ROW] {line}")
+            processed.append(f"[TABLE_ROW] {line}")
         elif line.strip().isupper() and len(line.strip()) < 100:
-            processed_lines.append(f"[SECTION_HEADER] {line}")
+            processed.append(f"[SECTION_HEADER] {line}")
         else:
-            processed_lines.append(line)
-            
-    return "\n".join(processed_lines)
+            processed.append(line)
+    return "\n".join(processed)
+
 
 def main():
-    print("Executing Day 2 Advanced Pipeline...")
-    
-    # 1. Load Documents
-    print("Loading PDFs from directory...")
-    loader = PyPDFDirectoryLoader(DATA_DIR)
-    raw_documents = loader.load()
-    print(f"Loaded {len(raw_documents)} total pages.")
-    
-    # Apply structural tagging preprocessing
-    print("Preprocessing text for table and header retention...")
-    for doc in raw_documents:
+    params = load_params()
+    ingest_cfg = params["ingest"]
+    chunk_cfg  = params["chunk"]
+
+    print(f"Loading documents from {ingest_cfg['output_path']}...")
+    with open(ingest_cfg["output_path"], "rb") as f:
+        documents = pickle.load(f)
+    print(f"Loaded {len(documents)} pages")
+
+    print("Applying structural tagging...")
+    for doc in documents:
         doc.page_content = clean_and_tag_text(doc.page_content)
 
-    # 2. Strategy A: Fixed-Size Chunking (Baseline)
-    print("\n--- Running Strategy A: Fixed-Size Chunking ---")
-    fixed_splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=0)
-    fixed_chunks = fixed_splitter.split_documents(raw_documents)
-    print(f"Fixed Chunking Total: {len(fixed_chunks)} chunks.")
-
-    # 3. Strategy B: Recursive Character Splitting (With Overlap)
-    print("\n--- Running Strategy B: Recursive Character Splitting ---")
-    recursive_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+    print(f"Chunking: size={chunk_cfg['chunk_size']}, overlap={chunk_cfg['chunk_overlap']}")
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_cfg["chunk_size"],
+        chunk_overlap=chunk_cfg["chunk_overlap"],
         separators=["\n\n", "\n", " ", ""]
     )
-    recursive_chunks = recursive_splitter.split_documents(raw_documents)
-    print(f"Recursive Chunking Total: {len(recursive_chunks)} chunks.")
+    chunks = splitter.split_documents(documents)
+    print(f"Created {len(chunks)} chunks")
 
-    # 4. Strategy C: Semantic Chunking (Meaning-Driven)
-    print("\n--- Running Strategy C: Semantic Chunking ---")
-    print("Initializing embedding engine for sentence breakdown...")
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    
-    semantic_splitter = SemanticChunker(
-        embeddings, 
-        breakpoint_threshold_type="percentile" # Splits based on statistical differences between sentences
-    )
-    semantic_chunks = semantic_splitter.split_documents(raw_documents)
-    print(f"Semantic Chunking Total: {len(semantic_chunks)} chunks.")
+    os.makedirs(os.path.dirname(chunk_cfg["output_path"]), exist_ok=True)
+    with open(chunk_cfg["output_path"], "wb") as f:
+        pickle.dump(chunks, f)
 
-    # 5. Export Strategy B as our high-fidelity baseline production choice
-    production_path = os.path.join(OUTPUT_DIR, "document_chunks.pkl")
-    with open(production_path, "wb") as f:
-        pickle.dump(recursive_chunks, f)
-        
-    print(f"\n✅ Pipeline complete. Production choice saved to {production_path}")
+    print(f"Saved chunks to {chunk_cfg['output_path']}")
+
+    metrics_path = "data/processed_data/chunk_metrics.json"
+    import json
+    metrics = {
+        "total_chunks": len(chunks),
+        "avg_chunk_length": round(
+            sum(len(c.page_content) for c in chunks) / len(chunks), 2
+        ),
+        "chunk_size": chunk_cfg["chunk_size"],
+        "chunk_overlap": chunk_cfg["chunk_overlap"],
+    }
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+    print(f"Metrics: {metrics}")
+    return len(chunks)
+
 
 if __name__ == "__main__":
     main()

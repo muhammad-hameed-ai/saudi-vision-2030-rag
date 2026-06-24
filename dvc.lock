@@ -1,0 +1,64 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: python src/ingest_data.py
+    deps:
+    - path: data/raw_pdfs
+      hash: md5
+      md5: f2c2576f2830f3b3b89c3b66263d515e.dir
+      size: 398976307
+      nfiles: 48
+    - path: src/ingest_data.py
+      hash: md5
+      md5: 8e1e0b76a3237ebbb34f25ab620b7920
+      size: 773
+    params:
+      params.yaml:
+        ingest.data_dir: data/raw_pdfs
+        ingest.output_path: data/processed_data/raw_documents.pkl
+    outs:
+    - path: data/processed_data/raw_documents.pkl
+      hash: md5
+      md5: 08fc4aa5077d14eb7a63bb08d5eafb85
+      size: 4715021
+  chunk:
+    cmd: python src/evaluate_chunking.py
+    deps:
+    - path: data/processed_data/raw_documents.pkl
+      hash: md5
+      md5: 08fc4aa5077d14eb7a63bb08d5eafb85
+      size: 4715021
+    - path: src/evaluate_chunking.py
+      hash: md5
+      md5: 8bea4e5cfcd9a1cb2eaf9d5f3a2be73b
+      size: 2334
+    params:
+      params.yaml:
+        chunk.chunk_overlap: 200
+        chunk.chunk_size: 1000
+        chunk.output_path: data/processed_data/document_chunks.pkl
+    outs:
+    - path: data/processed_data/chunk_metrics.json
+      hash: md5
+      md5: d7f3756619c06e894587bbd33bdc7531
+      size: 107
+    - path: data/processed_data/document_chunks.pkl
+      hash: md5
+      md5: 0e0ab0eba51169c3bb584dbee13714ce
+      size: 5902027
+  embed:
+    cmd: python src/create_embeddings.py
+    deps:
+    - path: data/processed_data/document_chunks.pkl
+      hash: md5
+      md5: 0e0ab0eba51169c3bb584dbee13714ce
+      size: 5902027
+    - path: src/create_embeddings.py
+      hash: md5
+      md5: b651c9ae03e472392c2cdc2caf302d64
+      size: 1294
+    params:
+      params.yaml:
+        embed.collection_name: saudi_vision_2030
+        embed.model_name: sentence-transformers/all-MiniLM-L6-v2
+        embed.qdrant_url: http://localhost:6333
