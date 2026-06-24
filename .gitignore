@@ -1,0 +1,14 @@
+mlruns/
+__pycache__/
+*.pyc
+.env
+dvc-storage/
+data/raw_pdfs/
+data/processed_data/raw_documents.pkl
+data/processed_data/chunk_metrics.json
+src/__pycache__/
+*.txt
+list_models.py
+test_gemini.py
+write_files.py
+fix_dockerfile.py
