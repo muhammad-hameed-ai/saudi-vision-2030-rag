@@ -3,7 +3,7 @@ ingest:
   output_path: data/processed_data/raw_documents.pkl
 
 chunk:
-  chunk_size: 1000
+  chunk_size: 1000   # production value - selected from 5 experiments
   chunk_overlap: 200
   output_path: data/processed_data/document_chunks.pkl
 
