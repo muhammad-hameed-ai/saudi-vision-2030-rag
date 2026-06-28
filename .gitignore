@@ -12,3 +12,7 @@ list_models.py
 test_gemini.py
 write_files.py
 fix_dockerfile.py
+qdrant_data/
+*.log
+.venv/
+venv/
