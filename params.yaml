@@ -9,10 +9,16 @@ chunk:
 
 embed:
   model_name: sentence-transformers/all-MiniLM-L6-v2
+  sparse_model: Qdrant/bm25
   collection_name: saudi_vision_2030
   qdrant_url: http://localhost:6333
   batch_size: 100
 
+reranker:
+  model_name: cross-encoder/ms-marco-MiniLM-L-6-v2
+  retrieval_k: 20    # candidates from hybrid search
+  rerank_top_k: 5    # final chunks for LLM context
+
 evaluate:
-  k: 3
+  k: 5
   output_path: data/evaluation/evaluation_scores.json
