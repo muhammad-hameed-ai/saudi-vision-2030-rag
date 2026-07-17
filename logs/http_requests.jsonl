@@ -209,3 +209,5 @@
 {"timestamp": "2026-07-07T18:58:03.111847+00:00", "level": "INFO", "logger": "rag.http", "message": "GET /api/pipeline-info 200", "method": "GET", "path": "/api/pipeline-info", "status_code": 200, "latency_ms": 17.96, "client": "127.0.0.1"}
 {"timestamp": "2026-07-07T18:58:44.265807+00:00", "level": "INFO", "logger": "rag.http", "message": "GET /api/pipeline-info 200", "method": "GET", "path": "/api/pipeline-info", "status_code": 200, "latency_ms": 13.45, "client": "127.0.0.1"}
 {"timestamp": "2026-07-07T18:59:41.815565+00:00", "level": "INFO", "logger": "rag.http", "message": "POST /api/chat 200", "method": "POST", "path": "/api/chat", "status_code": 200, "latency_ms": 35084.04, "client": "127.0.0.1"}
+{"timestamp": "2026-07-17T09:24:49.277972+00:00", "level": "INFO", "logger": "rag.http", "message": "POST /ask 200", "method": "POST", "path": "/ask", "status_code": 200, "latency_ms": 52796.45, "client": "testclient"}
+{"timestamp": "2026-07-17T09:25:33.934093+00:00", "level": "INFO", "logger": "rag.http", "message": "POST /ask 200", "method": "POST", "path": "/ask", "status_code": 200, "latency_ms": 44342.61, "client": "testclient"}

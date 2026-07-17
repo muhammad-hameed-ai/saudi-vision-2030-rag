@@ -9,6 +9,8 @@ Architecture:
 import os
 import asyncio
 import json
+import uuid
+from src.memory import save_message, get_session_history, summarize_history
 import time
 import math
 import ollama
@@ -179,6 +181,7 @@ class ChatRequest(BaseModel):
     Validates incoming chat requests. Automatically maps 'message', 'query', 
     or 'question' from the frontend to prevent 422 Unprocessable Content errors.
     """
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     question: str = Field(default="")
     k: int = Field(default=5, ge=1, le=10, description="Final chunks to inject into LLM")
 
@@ -201,6 +204,7 @@ class SourceDoc(BaseModel):
     score: float
 
 class AskResponse(BaseModel):
+    session_id: str
     question: str
     answer: str
     sources: List[SourceDoc]
@@ -220,6 +224,16 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # RAG Endpoints (Fully Asynchronous)
 # ---------------------------------------------------------------------------
+
+async def _build_memory_string(session_id: str) -> str:
+    memory_context = await asyncio.to_thread(get_session_history, session_id, 4)
+    memory_str = ""
+    if memory_context["summary"]:
+        memory_str += f"Summary of past conversation: {memory_context['summary']}\n"
+    for m in memory_context["messages"]:
+        memory_str += f"{m['role'].upper()}: {m['content']}\n"
+    return memory_str
+
 @app.post("/api/chat")
 async def process_rag_chat(request: ChatRequest):
     """
@@ -252,8 +266,9 @@ async def process_rag_chat(request: ChatRequest):
     context = "\n\n".join([c.content for c in reranked])
     system_prompt = (
         "You are an elite policy analyst for Saudi Vision 2030.\n"
-        "Use ONLY the following CONTEXT to answer the user's question.\n"
+        "Use ONLY the following CONTEXT and MEMORY to answer the user's question.\n"
         "If the CONTEXT does not contain information to answer the question, or if the user asks about an unrelated topic (e.g., foreign countries, general trivia), you MUST reply exactly with: 'I cannot find this information in the provided Saudi Vision 2030 policy documents.' Do not hallucinate.\n\n"
+        f"MEMORY:\n{memory_str}\n\n"
         f"CONTEXT:\n{context}"
     )
 
@@ -276,6 +291,9 @@ async def process_rag_chat(request: ChatRequest):
             },
         )
         ai_answer = response["message"]["content"].strip()
+        await asyncio.to_thread(save_message, request.session_id, "user", request.question)
+        await asyncio.to_thread(save_message, request.session_id, "assistant", answer)
+        asyncio.create_task(summarize_history(request.session_id))
     except Exception as e:
         err_str = str(e).lower()
         if "connect" in err_str or "timeout" in err_str:
@@ -319,6 +337,7 @@ async def process_rag_chat(request: ChatRequest):
     )
 
     return {
+        "session_id": request.session_id,
         "answer": ai_answer,
         "citations": source_citations,
         "metrics": {
@@ -349,11 +368,13 @@ async def ask(request: ChatRequest):
     except QdrantUnavailableError:
         raise HTTPException(status_code=503, detail="Vector database unavailable.")
 
+    memory_str = await _build_memory_string(request.session_id)
     context_text = "\n\n".join([c.content for c in reranked])
     system_prompt = (
         "You are an elite policy analyst for Saudi Vision 2030.\n"
-        "Use ONLY the following CONTEXT to answer the user's question.\n"
+        "Use ONLY the following CONTEXT and MEMORY to answer the user's question.\n"
         "If the CONTEXT does not contain information to answer the question, or if the user asks about an unrelated topic (e.g., foreign countries, general trivia), you MUST reply exactly with: 'I cannot find this information in the provided Saudi Vision 2030 policy documents.' Do not hallucinate.\n\n"
+        f"MEMORY:\n{memory_str}\n\n"
         f"CONTEXT:\n{context_text}"
     )
 
@@ -375,6 +396,9 @@ async def ask(request: ChatRequest):
             },
         )
         answer = response["message"]["content"].strip()
+        await asyncio.to_thread(save_message, request.session_id, "user", request.question)
+        await asyncio.to_thread(save_message, request.session_id, "assistant", answer)
+        asyncio.create_task(summarize_history(request.session_id))
     except Exception as e:
         err_str = str(e).lower()
         if "connect" in err_str or "timeout" in err_str:
@@ -413,6 +437,7 @@ async def ask(request: ChatRequest):
     )
 
     return AskResponse(
+        session_id=request.session_id,
         question=request.question,
         answer=answer,
         sources=sources,
