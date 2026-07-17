@@ -39,6 +39,7 @@ client_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 if "0.0.0.0" in client_host:
     client_host = "http://127.0.0.1:11434"
 os.environ["OLLAMA_HOST"] = client_host
+os.environ["USE_HYDE"] = os.getenv("USE_HYDE", "true")
 
 retriever = HybridRetriever()
 reranker = Reranker()
