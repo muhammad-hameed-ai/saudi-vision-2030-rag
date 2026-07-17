@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, Any, List
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
@@ -25,11 +25,18 @@ from pydantic import BaseModel, Field, model_validator
 from src.retriever import HybridRetriever, QdrantUnavailableError
 from src.reranker import Reranker
 from src.logging_middleware import StructuredLoggingMiddleware, log_rag_query
+from src.hyde_retriever import generate_hypothesis
 
 # ---------------------------------------------------------------------------
 # Environment & Global State
 # ---------------------------------------------------------------------------
-os.environ["OLLAMA_HOST"] = "http://127.0.0.1:11434"
+# Override the client connection host. If the system environment uses '0.0.0.0' 
+# (which tells the Ollama server to bind to all interfaces), we must intercept it
+# because '0.0.0.0' is an invalid destination address for a Python HTTP client.
+client_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+if "0.0.0.0" in client_host:
+    client_host = "http://127.0.0.1:11434"
+os.environ["OLLAMA_HOST"] = client_host
 
 retriever = HybridRetriever()
 reranker = Reranker()
@@ -46,10 +53,33 @@ SYSTEM_STATS = {
 RETRIEVAL_K = 20    # Retrieve 20 candidates from hybrid search
 RERANK_TOP_K = 5    # Rerank down to top 5 for LLM context
 
+# Cached health state (avoid per-request Qdrant round-trips)
+_cached_health = {"healthy": False, "checked_at": 0.0}
+HEALTH_CHECK_TTL = 5.0  # seconds
+MAX_LATENCY_HISTORY = 100
+MAX_FEEDBACK_LOG = 500
+
 
 # ---------------------------------------------------------------------------
 # Lifespan (Startup / Shutdown)
 # ---------------------------------------------------------------------------
+async def warmup_llm():
+    """Asynchronous background task to preload the Llama model into VRAM."""
+    print("Initiating Ollama background warm-up in 2 seconds...")
+    await asyncio.sleep(2)  # Let Uvicorn fully bind and event loop settle
+    try:
+        # Use localhost to allow Windows to resolve IPv4/IPv6 automatically
+        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        client = ollama.AsyncClient(host=host, timeout=120.0)
+        await client.chat(
+            model="llama3.2:1b",
+            messages=[{"role": "user", "content": "ping"}],
+            options={"num_predict": 1}
+        )
+        print("Ollama warm-up complete. Model loaded in VRAM.")
+    except Exception as e:
+        print(f"Ollama warm-up failed (engine offline?): {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: Eagerly load models to memory to ensure fast initial queries."""
@@ -62,11 +92,24 @@ async def lifespan(app: FastAPI):
         healthy = retriever.health_check()
         status = "CONNECTED" if healthy else "UNREACHABLE"
         print(f"Qdrant status: {status}")
+
+        # Cache the initial health state
+        _cached_health["healthy"] = healthy
+        _cached_health["checked_at"] = time.time()
+
+        if healthy:
+            collections = retriever._get_client().get_collections().collections
+            if not any(c.name == "saudi_vision_2030" for c in collections):
+                print("WARNING: Collection 'saudi_vision_2030' not found in Qdrant.")
+                print("Please run 'python src/create_embeddings.py' to ingest documents.")
+            else:
+                print("Database 'saudi_vision_2030' already exists. Skipping re-ingestion.")
     except Exception as e:
-        print(f"WARNING: Qdrant connection failed during startup: {e}")
+        print(f"WARNING: Qdrant connection or initialization failed during startup: {e}")
 
     startup_time = datetime.now(timezone.utc).isoformat()
     print("API ready.")
+    asyncio.create_task(warmup_llm())
     yield
 
 
@@ -93,8 +136,31 @@ app.add_middleware(
 # Helper Functions
 # ---------------------------------------------------------------------------
 def _require_qdrant():
-    """Fail-closed guard: raises 503 if Qdrant is unreachable."""
-    if not retriever.health_check():
+    """Auto-healing fail-closed guard.
+    
+    When healthy: uses a 5s TTL cache to avoid per-request round-trips.
+    When unhealthy: forces a fresh reconnection attempt on EVERY request,
+    so the system auto-recovers the moment Qdrant comes online.
+    """
+    now = time.time()
+
+    if _cached_health["healthy"]:
+        # Fast path: already healthy, only re-check after TTL expires
+        if now - _cached_health["checked_at"] < HEALTH_CHECK_TTL:
+            return
+    
+    # Either unhealthy or TTL expired — force a live check
+    # Reset the client to clear any stale connection state
+    try:
+        retriever._client = None
+        is_healthy = retriever.health_check()
+    except Exception:
+        is_healthy = False
+
+    _cached_health["healthy"] = is_healthy
+    _cached_health["checked_at"] = now
+
+    if not is_healthy:
         raise HTTPException(
             status_code=503,
             detail="Vector database unavailable. Cannot process query.",
@@ -166,8 +232,10 @@ async def process_rag_chat(request: ChatRequest):
 
     try:
         # Stage 1: Async Hybrid retrieval
+        use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
+        search_query = await generate_hypothesis(request.question) if use_hyde else request.question
         candidates = await asyncio.to_thread(
-            retriever.retrieve, request.question, k=RETRIEVAL_K
+            retriever.retrieve, search_query, k=RETRIEVAL_K
         )
 
         # Stage 2: Async Cross-encoder reranking
@@ -189,23 +257,44 @@ async def process_rag_chat(request: ChatRequest):
         f"CONTEXT:\n{context}"
     )
 
-    # Stage 4: Async LLM Generation
-    response = await asyncio.to_thread(
-        ollama.chat,
-        model="llama3.2:1b",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": request.question}
-        ],
-        options={"num_ctx": 2048, "num_predict": 300, "num_thread": 8},
-    )
-    ai_answer = response["message"]["content"].strip()
+    # Stage 4: Async LLM Generation with graceful timeout
+    try:
+        client = ollama.AsyncClient(host=os.environ["OLLAMA_HOST"], timeout=60.0)
+        response = await client.chat(
+            model="llama3.2:1b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": request.question}
+            ],
+            options={
+                "num_ctx": 2048,
+                "num_predict": 300,
+                "num_thread": 8,
+                "temperature": 0.3,
+                "top_k": 40,
+                "repeat_penalty": 1.1,
+            },
+        )
+        ai_answer = response["message"]["content"].strip()
+    except Exception as e:
+        err_str = str(e).lower()
+        if "connect" in err_str or "timeout" in err_str:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "LLM Engine Offline. Please start Ollama."}
+            )
+        raise HTTPException(
+            status_code=504,
+            detail=f"LLM generation timed out or failed: {str(e)[:200]}",
+        )
 
     # Metrics computation
     elapsed_time = time.time() - start_time
     elapsed_ms = round(elapsed_time * 1000, 2)
     SYSTEM_STATS["queries_served_this_session"] += 1
     SYSTEM_STATS["latency_history"].append(elapsed_time)
+    if len(SYSTEM_STATS["latency_history"]) > MAX_LATENCY_HISTORY:
+        SYSTEM_STATS["latency_history"] = SYSTEM_STATS["latency_history"][-MAX_LATENCY_HISTORY:]
 
     source_citations = []
     for chunk in reranked:
@@ -253,7 +342,9 @@ async def ask(request: ChatRequest):
     t0 = time.time()
     
     try:
-        candidates = await asyncio.to_thread(retriever.retrieve, request.question, k=RETRIEVAL_K)
+        use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
+        search_query = await generate_hypothesis(request.question) if use_hyde else request.question
+        candidates = await asyncio.to_thread(retriever.retrieve, search_query, k=RETRIEVAL_K)
         reranked = await asyncio.to_thread(reranker.rerank, request.question, candidates, top_k=request.k)
     except QdrantUnavailableError:
         raise HTTPException(status_code=503, detail="Vector database unavailable.")
@@ -266,16 +357,35 @@ async def ask(request: ChatRequest):
         f"CONTEXT:\n{context_text}"
     )
 
-    response = await asyncio.to_thread(
-        ollama.chat,
-        model="llama3.2:1b",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": request.question}
-        ],
-        options={"num_ctx": 2048, "num_predict": 300, "num_thread": 8},
-    )
-    answer = response["message"]["content"].strip()
+    try:
+        client = ollama.AsyncClient(host=os.environ["OLLAMA_HOST"], timeout=60.0)
+        response = await client.chat(
+            model="llama3.2:1b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": request.question}
+            ],
+            options={
+                "num_ctx": 2048,
+                "num_predict": 300,
+                "num_thread": 8,
+                "temperature": 0.3,
+                "top_k": 40,
+                "repeat_penalty": 1.1,
+            },
+        )
+        answer = response["message"]["content"].strip()
+    except Exception as e:
+        err_str = str(e).lower()
+        if "connect" in err_str or "timeout" in err_str:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "LLM Engine Offline. Please start Ollama."}
+            )
+        raise HTTPException(
+            status_code=504,
+            detail=f"LLM generation timed out or failed: {str(e)[:200]}",
+        )
 
     latency_ms = round((time.time() - t0) * 1000, 2)
     request_count += 1
@@ -392,6 +502,8 @@ async def feedback(request: FeedbackRequest):
         "comment": request.comment,
     }
     feedback_log.append(entry)
+    if len(feedback_log) > MAX_FEEDBACK_LOG:
+        feedback_log.pop(0)
 
     os.makedirs("data/feedback", exist_ok=True)
     path = "data/feedback/feedback_log.json"
@@ -400,8 +512,11 @@ async def feedback(request: FeedbackRequest):
     def write_feedback():
         existing = []
         if os.path.exists(path):
-            with open(path) as f:
-                existing = json.load(f)
+            try:
+                with open(path) as f:
+                    existing = json.load(f)
+            except (json.JSONDecodeError, ValueError):
+                existing = []
         existing.append(entry)
         with open(path, "w") as f:
             json.dump(existing, f, indent=2)

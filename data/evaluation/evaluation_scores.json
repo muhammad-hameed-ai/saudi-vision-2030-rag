@@ -1,42 +1,42 @@
 {
-  "faithfulness": 0.1,
-  "answer_relevancy": 0.4,
-  "context_precision": 0.35,
+  "faithfulness": 0.52,
+  "answer_relevancy": 0.42,
+  "context_precision": 0.3367,
   "per_question": [
     {
       "question": "What are the main economic goals of Saudi Vision 2030?",
-      "answer": "The main economic goals of Saudi Vision 2030 include:\n\n1. Making the Kingdom a sustainable and world-class investment destination.\n2. Diversifying the revenues to stimulate the economy, drive healthier employment opportunities for citizens, and foster long-term prosperity for all.\n\nAdditionally, Vision 2030 aims to grow and diversify the economy by:\n\n* Unlocking significant investment opportunities through PIF and NDF\n* Developing a solid physical and digital infrastructure base that connects people and goods effectively\n* Encouraging growth in various sectors, including emerging ones",
-      "faithfulness": 0.0,
-      "answer_relevancy": 0.75,
-      "context_precision": 0.3666666666666667
+      "answer": "The main economic goals of Saudi Vision 2030 are to:\n\n1. Make the Kingdom a sustainable and world-class investment destination.\n2. Diversify revenues by harnessing strong investment capabilities, improving business environments, and promoting partnerships with the private sector.\n\nAdditionally, Vision 2030 aims to grow and diversify the economy, making Saudi Arabia one of the top 15 economies globally.",
+      "faithfulness": 0.8,
+      "answer_relevancy": 0.8,
+      "context_precision": 0.3833333333333333
     },
     {
       "question": "What role does the private sector play in Vision 2030?",
-      "answer": "The private sector plays a crucial role in Saudi Arabia's Vision 2030 policy documents. According to these documents, it is at the heart of this policy and is instrumental in driving growth, accelerating transformation, and shaping the Kingdom's economic future.",
-      "faithfulness": 0.0,
-      "answer_relevancy": 0.75,
-      "context_precision": 0.36666666666666664
+      "answer": "The private sector plays a crucial role in Vision 2030 by being at the heart of it. Investment is primarily driven by the private sector, and this phase aims to build on the foundation established in the first phase to accelerate impact through regional and sectoral coverage, increased private sector engagement, and an integrated national delivery model.",
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.5,
+      "context_precision": 0.4166666666666667
     },
     {
       "question": "What is the Public Investment Fund and what is its role?",
-      "answer": "The Public Investment Fund (PIF) is a sovereign wealth fund established by Saudi Arabia's government to manage and invest the country's petroleum revenues in a diversified manner. Its role is to support economic development, promote investment, and improve the standard of living for citizens.\n\nIn this context, the Public Investment Fund is not providing financial or other support to its portfolio companies, including the Saudi Vision 2030 initiative.",
-      "faithfulness": 0.0,
+      "answer": "The Public Investment Fund (PIF) is described as \"the primary investment arm of the Government of Saudi Arabia.\"",
+      "faithfulness": 0.5,
       "answer_relevancy": 0.0,
-      "context_precision": 0.4666666666666666
+      "context_precision": 0.2833333333333333
     },
     {
       "question": "What are the Vision Realization Programs?",
-      "answer": "The Vision Realization Programs (VRPs) refer to 10 programs that have played a central role in delivering Vision 2030's objectives, which is strengthening coordination, building capabilities across the ecosystem, breaking silos, and accelerating progress.",
-      "faithfulness": 0.5,
-      "answer_relevancy": 0.5,
-      "context_precision": 0.18333333333333335
+      "answer": "The Vision Realization Programs (VRPs) refer to 10 programs that were established under the Saudi Vision 2030 policy document, with the aim of delivering key objectives and priorities as part of the overall strategy.",
+      "faithfulness": 0.8,
+      "answer_relevancy": 0.3,
+      "context_precision": 0.39999999999999997
     },
     {
       "question": "How does Vision 2030 aim to develop the entertainment sector?",
-      "answer": "I cannot find this information in the provided documents.",
+      "answer": "According to the provided context, Vision 2030 aims to \"Accelerating growth through strategic investment, new industries and world-class leadership\" in the business and economy. This suggests that it is not explicitly stated how specific industries such as entertainment are being developed or promoted, but rather that it is part of a broader strategy to create an economic transformation.",
       "faithfulness": 0.0,
-      "answer_relevancy": 0.0,
-      "context_precision": 0.3666666666666667
+      "answer_relevancy": 0.5,
+      "context_precision": 0.19999999999999998
     }
   ]
 }

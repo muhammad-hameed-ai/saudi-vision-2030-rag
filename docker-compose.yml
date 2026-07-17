@@ -19,6 +19,7 @@ services:
       - "8000:8000"
     environment:
       - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_HOST=http://host.docker.internal:11434
     depends_on:
       qdrant:
         condition: service_healthy

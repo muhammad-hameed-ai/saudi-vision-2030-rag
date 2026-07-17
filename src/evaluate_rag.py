@@ -14,6 +14,7 @@ def get_vector_store():
         embedding=embeddings,
         collection_name="saudi_vision_2030",
         url="http://localhost:6333",
+        vector_name="dense",
     )
 
 

@@ -310,6 +310,7 @@
         let activeEditingMessageId = null;
         let currentAbortController = null;
         let currentLoadId = null;
+        let isSubmitting = false;
         
         let activeSessionId = 'session-1';
         let chatSessions = {
@@ -318,6 +319,7 @@
 
         let pulseChart, latencyChart, accuracyChart;
         let pulseData = Array(30).fill(0);
+        let introCardHtml = null; // preserved intro block
 
         marked.setOptions({ breaks: true, gfm: true });
 
@@ -336,6 +338,12 @@
             lucide.createIcons();
             document.getElementById("setting-backend-url").value = BASE_BACKEND_URL;
             document.getElementById("endpoint-label").innerText = BASE_BACKEND_URL;
+
+            // Preserve the intro card HTML before any session switches can destroy it
+            const thread = document.getElementById('chat-thread');
+            if (thread && thread.firstElementChild) {
+                introCardHtml = thread.firstElementChild.outerHTML;
+            }
 
             executeTelemetryCheck();
             setInterval(executeTelemetryCheck, 6000);
@@ -454,9 +462,12 @@
             renderSessions();
             
             const thread = document.getElementById('chat-thread');
-            const intro = thread.firstElementChild; 
             thread.innerHTML = '';
-            if (intro && intro.id !== "msg-" && !intro.dataset.role) thread.appendChild(intro);
+
+            // Always restore the preserved intro card
+            if (introCardHtml) {
+                thread.insertAdjacentHTML('afterbegin', introCardHtml);
+            }
             
             chatSessions[id].messages.forEach(msg => {
                 if (msg.role === 'user') {
@@ -552,15 +563,24 @@
             const raw = rawBlock ? rawBlock.dataset.rawMessage : "";
             const input = document.getElementById("user-input");
             
-            // Case A: Active Generation is Running
-            // State Truncation
             if (rawBlock && chatSessions[activeSessionId]) {
                 const msgId = rawBlock.id;
                 const messages = chatSessions[activeSessionId].messages;
                 const idx = messages.findIndex(m => m.id === msgId);
                 if (idx > -1) {
-                    chatSessions[activeSessionId].messages = messages.slice(0, idx + 1);
+                    // Truncate session state to this message only
+                    chatSessions[activeSessionId].messages = messages.slice(0, idx);
                 }
+
+                // DOM truncation: remove this block and everything after it
+                const thread = document.getElementById('chat-thread');
+                let sibling = rawBlock.nextElementSibling;
+                while (sibling) {
+                    const next = sibling.nextElementSibling;
+                    sibling.remove();
+                    sibling = next;
+                }
+                rawBlock.remove();
             }
 
             if (currentAbortController) {
@@ -572,21 +592,26 @@
                     if (block) block.remove();
                     currentLoadId = null;
                 }
-                
-                input.disabled = false;
-                const sendBtn = document.getElementById("send-btn");
-                if (sendBtn) {
-                    sendBtn.disabled = false;
-                    sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i>`;
-                }
-                lucide.createIcons();
             }
+
+            // Reset input state so submit can proceed
+            const sendBtn = document.getElementById("send-btn");
+            input.disabled = false;
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i>`;
+            }
+            isSubmitting = false;
+            lucide.createIcons();
+
+            // Do NOT set activeEditingMessageId — the old bubble was removed,
+            // so submitQuery will create a fresh one via appendUserMessage.
+            activeEditingMessageId = null;
 
             input.value = raw !== "undefined" && raw ? raw : "";
             autoResize(input);
             input.focus();
             
-            // Smoothly scroll the viewport down to the input area
             const chatThread = document.getElementById("chat-thread");
             if (chatThread) {
                 chatThread.scrollTo({
@@ -795,10 +820,12 @@
             const inputField = document.getElementById("user-input");
             const sendBtn = document.getElementById("send-btn");
             const queryText = inputField.value.trim();
-            if (!queryText) return;
+            if (!queryText || isSubmitting) return;
+            isSubmitting = true;
 
             if (currentAbortController) {
                 currentAbortController.abort();
+                currentAbortController = null;
             }
 
             // Auto-Name Session
@@ -867,9 +894,9 @@
                     appendSystemMessage(data);
                     
                     if (data.metrics && data.metrics.latency_seconds) {
-                        recordLatency(data.metrics.latency_seconds);
+                        recordLatency(parseFloat(data.metrics.latency_seconds));
                     } else if (data.latency_ms) {
-                        recordLatency((data.latency_ms / 1000).toFixed(2));
+                        recordLatency(parseFloat(data.latency_ms) / 1000);
                     }
                 } else if (response.status === 422) {
                     appendErrorBlock("Structural Payload Data Error (422 Mismatch). Verify internal input variable declarations.");
@@ -891,6 +918,7 @@
                 appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running on the configured port.");
             } finally {
                 currentAbortController = null;
+                isSubmitting = false;
                 inputField.disabled = false;
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i>`;
@@ -1049,10 +1077,6 @@
             thread.appendChild(chunk);
             lucide.createIcons();
             thread.scrollTop = thread.scrollHeight;
-        }
-
-        function escapeHtml(str) {
-            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
     </script>
 </body>
