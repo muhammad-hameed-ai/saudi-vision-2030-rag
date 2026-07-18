@@ -10,6 +10,10 @@ on:
   pull_request:
     branches: [main]
 
+# Grant write permissions so the workflow can commit history changes back to the repo
+permissions:
+  contents: write
+
 jobs:
   validate-pipeline:
     runs-on: ubuntu-latest
@@ -17,6 +21,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for correct commit SHA tracking
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -42,19 +48,19 @@ jobs:
           assert p['chunk']['chunk_size'] == 1000
           assert p['chunk']['chunk_overlap'] == 200
           print('params.yaml valid')
-          print('chunk_size:', p['chunk']['chunk_size'])
-          print('chunk_overlap:', p['chunk']['chunk_overlap'])
           "
 
-      - name: Post pipeline summary
+      - name: Run Quality Gate and Track History
+        env:
+          GITHUB_SHA: ${{ github.sha }}
         run: |
-          echo "## RAG Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| chunk_size | 1000 |" >> $GITHUB_STEP_SUMMARY
-          echo "| chunk_overlap | 200 |" >> $GITHUB_STEP_SUMMARY
-          echo "| total_chunks | 5852 |" >> $GITHUB_STEP_SUMMARY
-          echo "| avg_chunk_length | 801.19 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Pipeline stages | ingest → chunk → embed |" >> $GITHUB_STEP_SUMMARY
-      - name: Run Quality Gate Check
-        run: python src/ci_quality_gate.py
+          python src/ci_quality_gate.py
+
+      - name: Commit and Push Score History
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/evaluation/scores_history.json
+          # Commit only if there are changes to prevent workflow failure
+          git diff-index --quiet HEAD || git commit -m "Auto-update evaluation score history [skip ci]"
+          git push origin main
