@@ -1,10 +1,15 @@
 import time
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import qdrant_client
 import requests
 from langchain_huggingface import HuggingFaceEmbeddings
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI(title="Vision 2030 Policy Intelligence Backend")
 
@@ -21,9 +26,14 @@ SYSTEM_STATS = {
     "latency_history": []
 }
 
-print("Initializing System Infrastructure Components...")
+print("Initializing Cloud Infrastructure Components...")
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-client = qdrant_client.QdrantClient(url="http://127.0.0.1:6333")
+
+# Connect to Qdrant Cloud
+client = qdrant_client.QdrantClient(
+    url=os.getenv("QDRANT_CLOUD_URL"),
+    api_key=os.getenv("QDRANT_CLOUD_API_KEY")
+)
 
 class ChatRequest(BaseModel):
     question: str
@@ -37,7 +47,7 @@ async def health_check():
             "status": "online",
             "database_connected": True,
             "points_count": collection_info.points_count,
-            "ollama_status": "accessible"
+            "llm_status": "accessible (Groq API)"
         }
     except Exception as e:
         return {"status": "degraded", "database_connected": False, "error": str(e)}
@@ -51,7 +61,7 @@ async def get_pipeline_info():
                 "documents": 48,
                 "pages": 2184,
                 "chunks": coll.points_count,
-                "dimensions": 384  # Safely hardcoded for the MiniLM model
+                "dimensions": 384 
             },
             "configuration": {
                 "document_loader": "PyPDFDirectoryLoader",
@@ -59,9 +69,9 @@ async def get_pipeline_info():
                 "chunk_size": 1000,
                 "chunk_overlap": 200,
                 "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
-                "vector_database": "Qdrant Distributed Core",
+                "vector_database": "Qdrant Cloud (eu-west-1)",
                 "distance_metric": "Cosine Similarity",
-                "llm_backbone": "llama3.2:1b (Ollama Engine)"
+                "llm_backbone": "Llama 3.1 8b (Groq API)"
             }
         }
     except Exception as e:
@@ -90,11 +100,12 @@ async def get_analytics_dashboard():
 async def process_rag_chat(request: ChatRequest):
     start_time = time.time()
     try:
-        # 1. Similarity Retrieval Payload Construction
+        # 1. Similarity Retrieval Payload Construction (Cloud)
         query_vector = embeddings.embed_query(request.question)
         results = client.query_points(
             collection_name="saudi_vision_2030",
             query=query_vector,
+            using="dense",  # Explicitly matches your cloud schema
             limit=request.k
         ).points
         
@@ -111,15 +122,33 @@ async def process_rag_chat(request: ChatRequest):
             
         context = "\n\n".join(context_blocks)
         
-        # 2. Local LLM Prompt Injection Execution
+        # 2. Cloud LLM Prompt Injection Execution (Groq Llama 3.1 8b)
         prompt = f"Context:\n{context}\n\nQuestion: {request.question}\nAnswer:"
-        ollama_response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={"model": "llama3.2:1b", "prompt": prompt, "stream": False},
-            timeout=120  # Increased timeout allowance for intensive generation
-        )
-        ollama_response.raise_for_status()
-        ai_answer = ollama_response.json().get('response', '')
+        
+        groq_url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": "You are a helpful and precise assistant for the Saudi Vision 2030 Policy Intelligence Hub. Formulate your answers based strictly on the provided context."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.1,
+            "stream": False
+        }
+        
+        groq_response = requests.post(groq_url, headers=headers, json=payload, timeout=30)
+        
+        # Verbose error feedback if Groq API encounters an issue
+        if groq_response.status_code != 200:
+            error_details = groq_response.text
+            print(f"Groq API Error: {error_details}")
+            raise HTTPException(status_code=groq_response.status_code, detail=f"Groq API Error: {error_details}")
+            
+        ai_answer = groq_response.json()["choices"][0]["message"]["content"]
         
         # 3. Compute Latency Performance Metrics
         elapsed_time = time.time() - start_time
