@@ -102,10 +102,16 @@ The system processes 48 official Saudi government policy documents spanning 2,18
 └──────────────────────────────────────────────────────────────────────┘
 
 
-Metric,Baseline,After HyDE,Δ Change
-Faithfulness,0.10,0.52,+420% ↑
-Answer Relevancy,0.40,0.42,+5% ↑
-Context Precision,0.35,0.34,-3% →
+The Evaluation Results Table
+Judge model: `llama3.2:1b` on 5 fixed test questions.
+
+| Metric | Baseline | After HyDE | Δ Change |
+|--------|----------|------------|----------|
+| Faithfulness | 0.10 | **0.52** | +420% ↑ |
+| Answer Relevancy | 0.40 | **0.42** | +5% ↑ |
+| Context Precision | 0.35 | **0.34** | -3% → |
+
+### Interpreting the Results
 
 
 Interpreting the Results
@@ -132,15 +138,17 @@ Experiment Tracking (MLflow)
 Every hyperparameter configuration — chunk size, overlap, embedding model, HyDE prompt temperature, retrieval k — is logged alongside resulting faithfulness and relevancy metrics. This creates an immutable audit ledger of system performance across versions, enabling reproducible comparison of any two configurations by commit hash.
 
 
-DVC Experiment Comparison
 Five chunking strategies were evaluated on the same 48 documents. All experiments are reproducible from git history.
-Experiment,Chunk Size,Overlap,Total Chunks,Avg Length,Decision
-chunk-500-50,500,50,"10,105",416 chars,Rejected
-chunk-800-150,800,150,"7,083",661 chars,Rejected
-chunk-1000-200,1000,200,"5,852",801 chars,✓ Selected
-chunk-1200-250,1200,250,"5,049",938 chars,Rejected
-chunk-1500-300,1500,300,"4,208","1,102 chars",Rejected
-Engineering rationale for 1000/200 selection:
+
+| Experiment | Chunk Size | Overlap | Total Chunks | Avg Length | Decision |
+|------------|------------|---------|--------------|------------|----------|
+| chunk-500-50 | 500 | 50 | 10,105 | 416 chars | Rejected |
+| chunk-800-150 | 800 | 150 | 7,083 | 661 chars | Rejected |
+| **chunk-1000-200** | **1000** | **200** | **5,852** | **801 chars** | **✓ Selected** |
+| chunk-1200-250 | 1200 | 250 | 5,049 | 938 chars | Rejected |
+| chunk-1500-300 | 1500 | 300 | 4,208 | 1,102 chars | Rejected |
+
+**Engineering rationale for 1000/200 selection:**
 
 500-char chunks fragment complete sentences and break table structures mid-row, destroying semantic continuity within policy sections.
 
@@ -153,22 +161,26 @@ dvc exp run --name "chunk-500-50" --set-param chunk.chunk_size=500 --set-param c
 dvc exp show --only-changed
 dvc exp apply chunk-1000-200  # restore production configuration
 
-Technical Stack
-Layer,Technology,Role
-Vector Database,"Qdrant (Docker, persistent)","Stores 5,852 hybrid vectors"
-Dense Embeddings,all-MiniLM-L6-v2 (384-dim),Semantic similarity search
-Sparse Embeddings,Qdrant/bm25 via fastembed,Exact term and numeral matching
-Fusion,Reciprocal Rank Fusion (RRF),Combines dense + sparse rankings
-Reranking,cross-encoder/ms-marco-MiniLM-L-6-v2,Neural pair scoring (top 20 → top 5)
-Retrieval Enhancement,"HyDE (Gao et al., 2022)",Hypothesis-based embedding
-LLM,llama3.2:1b via Ollama,"Local generation, zero API cost"
-Memory,SQLite + asyncio,Multi-turn session tracking
-API,"FastAPI (async, SSE streaming)",Production gateway
-Data Versioning,DVC + params.yaml,Reproducible pipeline
-Experiment Tracking,MLflow,Hyperparameter and metric ledger
-Drift Monitoring,Evidently AI,Query distribution shift detection
-CI/CD,GitHub Actions,Validate + evaluate on every push
-Frontend,HTML/CSS/JS dashboard,Chat UI + analytics + pipeline view
+## Technical Stack
+
+| Layer | Technology | Role |
+|-------|------------|------|
+| Vector Database | Qdrant (Docker, persistent) | Stores 5,852 hybrid vectors |
+| Dense Embeddings | all-MiniLM-L6-v2 (384-dim) | Semantic similarity search |
+| Sparse Embeddings | Qdrant/bm25 via fastembed | Exact term and numeral matching |
+| Fusion | Reciprocal Rank Fusion (RRF) | Combines dense + sparse rankings |
+| Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 | Neural pair scoring (top 20 → top 5) |
+| Retrieval Enhancement | HyDE (Gao et al., 2022) | Hypothesis-based embedding |
+| LLM | llama3.2:1b via Ollama | Local generation, zero API cost |
+| Memory | SQLite + asyncio | Multi-turn session tracking |
+| API | FastAPI (async, SSE streaming) | Production gateway |
+| Data Versioning | DVC + params.yaml | Reproducible pipeline |
+| Experiment Tracking | MLflow | Hyperparameter and metric ledger |
+| Drift Monitoring | Evidently AI | Query distribution shift detection |
+| CI/CD | GitHub Actions | Validate + evaluate on every push |
+| Frontend | HTML/CSS/JS dashboard | Chat UI + analytics + pipeline view |
+
+## How to Reproduce
 
 # 1. Clone repository
 git clone [https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git](https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git)
@@ -269,14 +281,17 @@ The circular evaluation bias (small model judging its own outputs) limits the in
 
 Known Limitations
 Stated honestly as engineering observations, not apologies.
-Limitation,Root Cause,Research Direction
-Faithfulness ceiling at 0.52,Small LLM (1.3B params) blends retrieved and pre-training knowledge,LoRA fine-tuning on domain Q&A pairs
-Circular evaluation bias,Same small LLM generates and judges answers,Independent judge model or human evaluation dataset
-Single-chunk retrieval only,No multi-hop reasoning implemented,Agentic retrieval with query decomposition
-English documents only,Multilingual embeddings not evaluated,Cross-lingual retrieval with multilingual-e5
-Kubernetes unverified end-to-end,YAML files written but pods not confirmed running with full ML stack,Cloud deployment on managed Kubernetes
-5-question evaluation suite,Local inference speed constraints,Expand to 50–100 diverse questions
 
+| Limitation | Root Cause | Research Direction |
+|------------|------------|--------------------|
+| Faithfulness ceiling at 0.52 | Small LLM (1.3B params) blends retrieved and pre-training knowledge | LoRA fine-tuning on domain Q&A pairs |
+| Circular evaluation bias | Same small LLM generates and judges answers | Independent judge model or human evaluation dataset |
+| Single-chunk retrieval only | No multi-hop reasoning implemented | Agentic retrieval with query decomposition |
+| English documents only | Multilingual embeddings not evaluated | Cross-lingual retrieval with multilingual-e5 |
+| Kubernetes unverified end-to-end | YAML files written but pods not confirmed running with full ML stack | Cloud deployment on managed Kubernetes |
+| 5-question evaluation suite | Local inference speed constraints | Expand to 50–100 diverse questions |
+
+---
 References
 Gao, L., Ma, X., Lin, J., & Callan, J. (2022). Precise Zero-Shot Dense Retrieval without Relevance Labels. arXiv preprint arXiv:2212.10496. — Foundation for HyDE implementation in this system.
 
