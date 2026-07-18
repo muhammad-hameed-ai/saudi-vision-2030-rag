@@ -5,5 +5,13 @@
     "faithfulness": 0.52,
     "relevancy": 0.42,
     "precision": 0.3367
+  },
+  {
+    "timestamp": "2026-07-18T01:14:43Z",
+    "commit": "2554e6e",
+    "faithfulness": 0.52,
+    "answer_relevancy": 0.42,
+    "context_precision": 0.34,
+    "hyde_enabled": true
   }
 ]
