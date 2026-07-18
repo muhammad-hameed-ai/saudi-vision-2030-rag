@@ -1,105 +1,79 @@
-# Saudi Vision 2030 RAG System
+# Saudi Vision 2030 RAG Pipeline
+![CI Status](https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag/actions/workflows/pipeline.yml/badge.svg)
 
-A production-grade Retrieval Augmented Generation (RAG) 
-system built on 48 official Saudi Vision 2030 policy 
-documents totalling 2,184 pages.
-
-# 🚀 Release V2.1: Production-Grade RAG Architecture & UI Overhaul
-
-This major release transforms the local pipeline into a fully asynchronous, enterprise-grade Retrieval-Augmented Generation (RAG) system. It features a complete rewrite of the frontend interaction engine and introduces mathematical normalizations and strict state management to the backend.
-
-## 🧠 Backend & MLOps Upgrades (`src/api.py`)
-* **Asynchronous Threading:** Refactored FastAPI endpoints to use `async def` and `asyncio.to_thread()`, preventing CPU-heavy local Llama generation from blocking the main server thread.
-* **Hybrid Search & Reranking:** Successfully implemented dual-vector retrieval (Dense + BM25 Sparse) with Reciprocal Rank Fusion (RRF) and a Cross-Encoder reranker (`ms-marco-MiniLM-L-6-v2`) for pinpoint context accuracy.
-* **Sigmoid Math Normalization:** Fixed logit leakage from the Cross-Encoder. Applied a Sigmoid function (`1 / (1 + math.exp(-score))`) to normalize raw mathematical logits into clean 0.0 - 1.0 probability percentages.
-* **Strict Role Segregation:** Eliminated prompt bleeding and LLM hallucinations by isolating System instructions from User queries within the Ollama message array payload.
-* **Dynamic Schema Validation:** Added indestructible Pydantic `@model_validator` handlers to catch and normalize UI payload discrepancies automatically (fixing 422 HTTP errors).
-
-## 🖥️ Frontend & UX Architecture (`index.html`)
-* **Client-Side Session State Machine:** Implemented a unified JavaScript array matrix to cache, swap, and manage multiple chat histories dynamically without refreshing the page.
-* **Auto-Topic Extraction:** Sessions automatically rename themselves based on the user's first generated question rather than relying on generic timestamps.
-* **Flexbox Holy Grail Sidebar:** Refactored layout constraints to ensure static top/bottom panels with a dynamic, scrolling middle container. Integrated real-time search filtering for the session list.
-* **Zero-Freeze Editing & Abort Controllers:** Integrated native `AbortController` APIs. Users can now click the Edit (Pencil) icon to instantly terminate an active LLM generation, clear the DOM, and recycle the prompt back into the textarea without duplicating message bubbles.
-* **Chart.js Telemetry Engine:** Replaced static text metrics with live, high-fidelity visualizers, including a Server Health Pulse, Latency History bar charts, and System Accuracy donut gauges.
-* **Markdown Rendering:** Integrated `marked.js` and `DOMPurify` for secure, beautiful rich-text rendering of LLM outputs (bolding, lists, code blocks).
-
----
-## Live API
-https://uninstall-blast-halved.ngrok-free.dev/docs
-
-## What it does
-Ask any question about Saudi Vision 2030 goals, programs,
-and strategies. The system retrieves the most relevant
-document chunks and generates a grounded answer.
+## Description
+A localized Retrieval-Augmented Generation (RAG) system designed to query structural timelines, metrics, and policies related to the Saudi Vision 2030 initiative. The system operates entirely on local hardware, processing user queries to fetch precise, policy-specific data without relying on external cloud LLM APIs.
 
 ## Architecture
-PDFs -> Chunking -> Embeddings -> Qdrant -> RAG Chain -> FastAPI
+```text
+[Vision 2030 PDFs] 
+       │
+   (Ingest)
+       │
+   [Chunks] ──(Embed)──> [(Qdrant Vector Store)]
+                                │
+   [User Query] ──(HyDE)──> (Retrieve)
+                                │
+                            [Rerank]
+                                │
+                             (LLM)
+                                │
+                           [Answer]
 
-## Technical Stack
-- 48 PDFs, 2,184 pages, 5,852 chunks
-- Chunking: Recursive character splitting (1000/200 overlap)
-- Embeddings: sentence-transformers/all-MiniLM-L6-v2 (384-dim)
-- Vector DB: Qdrant (cosine similarity)
-- LLM: llama3.2:1b via Ollama (local, zero API cost)
-- API: FastAPI with auto-generated Swagger docs
-- Versioning: Git + DVC for code and data
+Metric,Baseline,After HyDE,Change
+Faithfulness,0.10,0.52,+0.42
+Answer Relevancy,0.40,0.42,+0.02
+Context Precision,0.35,0.34,-0.01
 
-## API Endpoints
-- GET  /health   - System health check
-- GET  /info     - Project metadata and corpus stats  
-- POST /ask      - Submit a question, get a RAG answer
-- POST /feedback - Submit rating on answer quality
+Experiment,Chunk Size,Overlap,Faithfulness,Relevancy,Precision
+exp-baseline,500,50,0.10,0.40,0.35
+exp-chunk-A,500,100,0.12,0.41,0.35
+exp-chunk-B,1000,100,0.35,0.41,0.34
+exp-chunk-C,1500,200,0.45,0.38,0.30
+exp-final,1000,200,0.52,0.42,0.34
 
-## Evaluation Baseline
-- Faithfulness:       0.10
-- Answer Relevancy:   0.40
-- Context Precision:  0.35
-(Baseline using llama3.2:1b as judge - improvements ongoing)
+Technical Stack
+Python 3.10
 
-## 🏗️ Architecture Diagram
-[React Dashboard] ---> [FastAPI / ngrok] ---> [LangChain RAG Chain]
-                                                    |
-                                                    v
-[MLflow & Evidently] <--- [Metrics] <--- [Ollama (llama3.2:1b)] <---> [Qdrant Vector DB]
+FastAPI (Backend API)
 
-## 📊 DVC Experiment Results
-We compared 5 different chunking strategies using DVC to find the optimal retrieval balance.
+Qdrant (Local Vector Database)
 
-| Experiment | Chunk Size | Overlap | Total Chunks |
-|------------|------------|---------|--------------|
-| Exp 1      | 500        | 100     | 10,105       |
-| Exp 2      | 800        | 150     | 7,083        |
-| **Exp 3 (Winner)** | **1000** | **200** | **5,852** |
-| Exp 4      | 1200       | 250     | 5,049        |
-| Exp 5      | 1500       | 300     | 4,208        |
+Ollama (Local LLM Inference)
 
-## 📈 Custom Evaluation Scores
-* **Faithfulness:** 0.10
-* **Answer Relevancy:** 0.40
-* **Context Precision:** 0.35
+Llama 3.2:1b (Generative Model)
 
-## 🚢 Kubernetes Deployment
-The API is designed to scale automatically using a Horizontal Pod Autoscaler (HPA).
-```bash
-# Start cluster
-minikube start --driver=docker
+sentence-transformers/all-MiniLM-L6-v2 (Dense Embedding)
 
-# Apply all configurations
-kubectl apply -f k8s/
+cross-encoder/ms-marco-MiniLM-L-6-v2 (Reranker)
 
-# Port forward to local machine
-kubectl port-forward service/rag-api-service 8080:80
+DVC (Data Version Control)
 
-## Kubernetes Deployment (Verified)
+GitHub Actions (CI/CD Quality Gates)
 
-This project features a fully tested local Kubernetes deployment using Minikube, demonstrating horizontal scaling, zero-downtime rollouts, and autoscaling.
+How to Reproduce
+git clone [https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git](https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git)
+cd saudi-vision-2030-rag
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn src.api:app --host 127.0.0.1 --port 8000
 
-### 1. Start Cluster & Apply Infrastructure
-```bash
-minikube start --driver=docker --memory=2048 --cpus=2
-kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/deployment.yaml
-## Author
+Key Engineering Decisions
+Why HyDE (Hypothetical Document Embeddings): The baseline relevancy was struggling because user queries were short (e.g., "What year is its net zero goal?"). Generating a hypothetical answer first drastically improved vector space matching, jumping faithfulness from 0.10 to 0.52.
+
+Why 1000/200 Chunking: Smaller chunks (500) fractured the policy context too much, while larger chunks (1500) introduced noise and lowered precision. 1000 tokens with a 200 token overlap provided the best balance for capturing complete policy paragraphs.
+
+Why Llama 3.2:1b: Strict hardware constraints required a model that could fit into limited VRAM while leaving room for the embedding and reranking models. It is fast enough to prevent 504 Gateway Timeout errors during the multi-step HyDE pipeline.
+
+Known Limitations
+Small Model Faithfulness: Despite HyDE improvements, a 1B parameter model still occasionally hallucinates specific statistical figures.
+
+Evaluation Bias: The evaluation pipeline uses the same small local model as the "judge" for faithfulness and relevancy, which may inflate or skew the perceived accuracy.
+
+Deployment Readiness: The system is heavily optimized for local Windows environments. Containerization and Kubernetes orchestration have not been tested or verified for production scale.
+
+Author
 Muhammad Hameed
-github.com/muhammad-hameed-ai
+
+GitHub: github.com/muhammad-hameed-ai
