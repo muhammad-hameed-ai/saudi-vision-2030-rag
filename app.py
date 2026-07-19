@@ -1,5 +1,6 @@
 import time
 import os
+import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import qdrant_client
@@ -42,6 +43,44 @@ client = qdrant_client.QdrantClient(
 class ChatRequest(BaseModel):
     question: str
     k: int = 3
+
+
+# Smart Intent System Prompt
+SYSTEM_PROMPT_TEMPLATE = """You are the Senior Policy Intelligence Analyst for the Saudi Vision 2030 Hub. Your core mandate is to deliver highly accurate, contextual, and helpful insights from the provided document context.
+
+OPERATIONAL INSTRUCTIONS:
+1. SMART INTENT EXTRACTION: Users may provide queries with typographical errors, missing punctuation, or slightly imprecise phrasing. You must look past superficial syntax errors and deduce the true semantic intent of the query.
+2. THE 50% RELATEDNESS RULE:
+   - If the context contains a direct, explicit answer, provide it clearly and concisely.
+   - If the context does not contain a flawless direct match, but contains information that is at least 50% relevant to the user's core intent, do NOT reject it. Instead, bridge the gap transparently. Phrase it like: "While the exact target for [X] is not explicitly detailed, the policy documents outline the following related initiatives: [Y]."
+3. HARD SAFETY BOUNDARY: If the provided context shares absolutely zero semantic overlap with the query (less than 50% match), or if the query relates to completely out-of-scope topics (e.g., international affairs, unrelated countries), you must return this exact fallback string verbatim and nothing else:
+   "I cannot find this information in the provided Saudi Vision 2030 policy documents."
+4. NO INVENTED KNOWLEDGE: Never utilize pre-trained global knowledge to invent facts, metrics, or initiatives that are missing from the provided context.
+
+CONTEXT (your ONLY source of truth):
+{context}"""
+
+
+def optimize_search_query(user_query: str) -> str:
+    """
+    Normalizes typos and expands keywords standard to Saudi Vision 2030 docs
+    to maximize Qdrant hybrid search recall.
+    """
+    query = user_query.lower().strip()
+    query = re.sub(r'\bsaudiarab\b', 'saudi arabia', query)
+    query = re.sub(r'\bthere main\b', 'their main', query)
+    query = re.sub(r'\bthere new\b', 'their new', query)
+    query = re.sub(r'\bvison\b', 'vision', query)
+    query = re.sub(r'\b2030s?\b', '2030', query)
+
+    if "project" in query or "program" in query:
+        query += " vision realization programs VRP initiatives"
+    if "goal" in query or "pillar" in query:
+        query += " strategic objectives pillars targets"
+    if "oil" in query or "economy" in query:
+        query += " non-oil GDP diversification revenue"
+
+    return query
 
 @app.get("/health")
 async def health_check():
@@ -104,12 +143,13 @@ async def get_analytics_dashboard():
 async def process_rag_chat(request: ChatRequest):
     start_time = time.time()
     try:
-        # 1. Similarity Retrieval Payload Construction (Cloud)
-        query_vector = embeddings.embed_query(request.question)
+        # 1. Query Optimization + Similarity Retrieval (Cloud)
+        optimized_query = optimize_search_query(request.question)
+        query_vector = embeddings.embed_query(optimized_query)
         results = client.query_points(
             collection_name="saudi_vision_2030",
             query=query_vector,
-            using="dense",  # Explicitly matches your cloud schema
+            using="dense",
             limit=request.k
         ).points
         
@@ -126,23 +166,8 @@ async def process_rag_chat(request: ChatRequest):
             
         context = "\n\n".join(context_blocks)
         
-        # 2. Cloud LLM Prompt Injection Execution (Groq Llama 3.1 8b)
-        system_prompt = (
-            "ROLE: You are a strict policy extraction engine for Saudi Vision 2030.\n"
-            "You are NOT a general-purpose assistant. You do NOT have opinions, creativity, or general knowledge.\n\n"
-            "ABSOLUTE RULES (violations are critical failures):\n"
-            "1. Your ONLY source of truth is the CONTEXT block below. Treat it as an impenetrable wall.\n"
-            "2. If the answer to the user's question is NOT explicitly stated in the CONTEXT, you MUST respond with EXACTLY:\n"
-            "   \"I cannot find this information in the provided Saudi Vision 2030 policy documents.\"\n"
-            "3. Do NOT paraphrase, speculate, infer, extrapolate, or use your pre-trained knowledge under ANY circumstances.\n"
-            "4. Do NOT attempt to be helpful by guessing. Silence is better than hallucination.\n"
-            "5. If the question is about a country other than Saudi Arabia, a topic unrelated to Vision 2030, or general trivia, "
-            "return the exact fallback phrase from Rule 2. No exceptions.\n"
-            "6. If the CONTEXT contains partial information, answer ONLY the part that is explicitly supported. "
-            "Do not fill gaps with outside knowledge.\n"
-            "7. When answering, cite specific numbers, percentages, or targets ONLY if they appear verbatim in the CONTEXT.\n\n"
-            f"CONTEXT (your ONLY source of truth):\n{context}"
-        )
+        # 2. Cloud LLM Prompt Assembly (Groq Llama 3.1 8b)
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(context=context)
         
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {

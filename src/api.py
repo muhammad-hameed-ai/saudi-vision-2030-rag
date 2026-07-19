@@ -7,6 +7,7 @@ Architecture:
 """
 
 import os
+import re
 import asyncio
 import json
 import uuid
@@ -59,6 +60,47 @@ _cached_health = {"healthy": False, "checked_at": 0.0}
 
 # Cloud LLM Settings
 GROQ_MODEL = "llama-3.1-8b-instant"
+
+# Smart Intent System Prompt (shared across all endpoints)
+SYSTEM_PROMPT_TEMPLATE = """You are the Senior Policy Intelligence Analyst for the Saudi Vision 2030 Hub. Your core mandate is to deliver highly accurate, contextual, and helpful insights from the provided document context.
+
+OPERATIONAL INSTRUCTIONS:
+1. SMART INTENT EXTRACTION: Users may provide queries with typographical errors, missing punctuation, or slightly imprecise phrasing. You must look past superficial syntax errors and deduce the true semantic intent of the query.
+2. THE 50% RELATEDNESS RULE:
+   - If the context contains a direct, explicit answer, provide it clearly and concisely.
+   - If the context does not contain a flawless direct match, but contains information that is at least 50% relevant to the user's core intent, do NOT reject it. Instead, bridge the gap transparently. Phrase it like: "While the exact target for [X] is not explicitly detailed, the policy documents outline the following related initiatives: [Y]."
+3. HARD SAFETY BOUNDARY: If the provided context shares absolutely zero semantic overlap with the query (less than 50% match), or if the query relates to completely out-of-scope topics (e.g., international affairs, unrelated countries), you must return this exact fallback string verbatim and nothing else:
+   "I cannot find this information in the provided Saudi Vision 2030 policy documents."
+4. NO INVENTED KNOWLEDGE: Never utilize pre-trained global knowledge to invent facts, metrics, or initiatives that are missing from the provided context.
+
+MEMORY (prior conversation):
+{memory}
+
+CONTEXT (your ONLY source of truth):
+{context}"""
+
+
+def optimize_search_query(user_query: str) -> str:
+    """
+    Normalizes typos and expands keywords standard to Saudi Vision 2030 docs
+    to maximize Qdrant hybrid search recall.
+    """
+    query = user_query.lower().strip()
+    query = re.sub(r'\bsaudiarab\b', 'saudi arabia', query)
+    query = re.sub(r'\bthere main\b', 'their main', query)
+    query = re.sub(r'\bthere new\b', 'their new', query)
+    query = re.sub(r'\bvison\b', 'vision', query)
+    query = re.sub(r'\b2030s?\b', '2030', query)
+
+    # Keyword enrichment for low-context queries
+    if "project" in query or "program" in query:
+        query += " vision realization programs VRP initiatives"
+    if "goal" in query or "pillar" in query:
+        query += " strategic objectives pillars targets"
+    if "oil" in query or "economy" in query:
+        query += " non-oil GDP diversification revenue"
+
+    return query
 
 
 # ---------------------------------------------------------------------------
@@ -223,41 +265,27 @@ async def process_rag_chat(request: ChatRequest):
     top_k = request.k
 
     try:
-        # Step 1: Query Conditioning (HyDE)
+        # Step 1: Query Optimization (typo tolerance + keyword expansion)
+        optimized_query = optimize_search_query(request.question)
+
+        # Step 2: Query Conditioning (HyDE)
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
-        search_query = await generate_hypothesis(request.question) if use_hyde else request.question
+        search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
         
-        # Step 2: Dense + Sparse Candidate Extraction
+        # Step 3: Dense + Sparse Candidate Extraction
         candidates = await asyncio.to_thread(retriever.retrieve, search_query, k=RETRIEVAL_K)
 
-        # Step 3: Deep Cross-Encoder Re-scoring
+        # Step 4: Deep Cross-Encoder Re-scoring
         reranked = await asyncio.to_thread(reranker.rerank, request.question, candidates, top_k=top_k)
     except QdrantUnavailableError:
         raise HTTPException(status_code=503, detail="Vector search engine timed out during document pooling.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal collection failure: {str(e)}")
 
-    # Step 4: System Memory Injection
+    # Step 5: System Memory Injection & Prompt Assembly
     memory_str = await _build_memory_string(request.session_id)
     context = "\n\n".join([c.content for c in reranked])
-    
-    system_prompt = (
-        "ROLE: You are a strict policy extraction engine for Saudi Vision 2030.\n"
-        "You are NOT a general-purpose assistant. You do NOT have opinions, creativity, or general knowledge.\n\n"
-        "ABSOLUTE RULES (violations are critical failures):\n"
-        "1. Your ONLY source of truth is the CONTEXT block below. Treat it as an impenetrable wall.\n"
-        "2. If the answer to the user's question is NOT explicitly stated in the CONTEXT, you MUST respond with EXACTLY:\n"
-        "   \"I cannot find this information in the provided Saudi Vision 2030 policy documents.\"\n"
-        "3. Do NOT paraphrase, speculate, infer, extrapolate, or use your pre-trained knowledge under ANY circumstances.\n"
-        "4. Do NOT attempt to be helpful by guessing. Silence is better than hallucination.\n"
-        "5. If the question is about a country other than Saudi Arabia, a topic unrelated to Vision 2030, or general trivia, "
-        "return the exact fallback phrase from Rule 2. No exceptions.\n"
-        "6. If the CONTEXT contains partial information, answer ONLY the part that is explicitly supported. "
-        "Do not fill gaps with outside knowledge.\n"
-        "7. When answering, cite specific numbers, percentages, or targets ONLY if they appear verbatim in the CONTEXT.\n\n"
-        f"MEMORY (prior conversation):\n{memory_str}\n\n"
-        f"CONTEXT (your ONLY source of truth):\n{context}"
-    )
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context)
 
     # Step 5: Asynchronous Groq LLM Text Synthesis Loop
     try:
@@ -339,8 +367,9 @@ async def ask(request: ChatRequest):
 
     t0 = time.time()
     try:
+        optimized_query = optimize_search_query(request.question)
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
-        search_query = await generate_hypothesis(request.question) if use_hyde else request.question
+        search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
         candidates = await asyncio.to_thread(retriever.retrieve, search_query, k=RETRIEVAL_K)
         reranked = await asyncio.to_thread(reranker.rerank, request.question, candidates, top_k=request.k)
     except QdrantUnavailableError:
@@ -348,23 +377,7 @@ async def ask(request: ChatRequest):
 
     memory_str = await _build_memory_string(request.session_id)
     context_text = "\n\n".join([c.content for c in reranked])
-    system_prompt = (
-        "ROLE: You are a strict policy extraction engine for Saudi Vision 2030.\n"
-        "You are NOT a general-purpose assistant. You do NOT have opinions, creativity, or general knowledge.\n\n"
-        "ABSOLUTE RULES (violations are critical failures):\n"
-        "1. Your ONLY source of truth is the CONTEXT block below. Treat it as an impenetrable wall.\n"
-        "2. If the answer to the user's question is NOT explicitly stated in the CONTEXT, you MUST respond with EXACTLY:\n"
-        "   \"I cannot find this information in the provided Saudi Vision 2030 policy documents.\"\n"
-        "3. Do NOT paraphrase, speculate, infer, extrapolate, or use your pre-trained knowledge under ANY circumstances.\n"
-        "4. Do NOT attempt to be helpful by guessing. Silence is better than hallucination.\n"
-        "5. If the question is about a country other than Saudi Arabia, a topic unrelated to Vision 2030, or general trivia, "
-        "return the exact fallback phrase from Rule 2. No exceptions.\n"
-        "6. If the CONTEXT contains partial information, answer ONLY the part that is explicitly supported. "
-        "Do not fill gaps with outside knowledge.\n"
-        "7. When answering, cite specific numbers, percentages, or targets ONLY if they appear verbatim in the CONTEXT.\n\n"
-        f"MEMORY (prior conversation):\n{memory_str}\n\n"
-        f"CONTEXT (your ONLY source of truth):\n{context_text}"
-    )
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context_text)
 
     try:
         client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"), timeout=30.0)
