@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import qdrant_client
 import requests
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -27,7 +27,11 @@ SYSTEM_STATS = {
 }
 
 print("Initializing Cloud Infrastructure Components...")
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# Lightweight cloud-based inference (Zero local RAM footprint)
+embeddings = HuggingFaceInferenceAPIEmbeddings(
+    api_key=os.getenv("HF_TOKEN"),
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
 
 # Connect to Qdrant Cloud
 client = qdrant_client.QdrantClient(
@@ -142,7 +146,6 @@ async def process_rag_chat(request: ChatRequest):
         
         groq_response = requests.post(groq_url, headers=headers, json=payload, timeout=30)
         
-        # Verbose error feedback if Groq API encounters an issue
         if groq_response.status_code != 200:
             error_details = groq_response.text
             print(f"Groq API Error: {error_details}")
