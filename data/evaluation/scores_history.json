@@ -69,5 +69,13 @@
     "answer_relevancy": 0.42,
     "context_precision": 0.34,
     "hyde_enabled": true
+  },
+  {
+    "timestamp": "2026-07-19T08:03:15Z",
+    "commit": "281eb76",
+    "faithfulness": 0.52,
+    "answer_relevancy": 0.42,
+    "context_precision": 0.34,
+    "hyde_enabled": true
   }
 ]
