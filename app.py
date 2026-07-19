@@ -46,16 +46,18 @@ class ChatRequest(BaseModel):
 
 
 # Smart Intent System Prompt
-SYSTEM_PROMPT_TEMPLATE = """You are the Senior Policy Intelligence Analyst for the Saudi Vision 2030 Hub. Your core mandate is to deliver highly accurate, contextual, and helpful insights from the provided document context.
+SYSTEM_PROMPT_TEMPLATE = """You are the Senior Policy Intelligence Analyst for the Saudi Vision 2030 Hub. Your core mandate is to perform strict semantic extraction from the provided document context.
 
 OPERATIONAL INSTRUCTIONS:
-1. SMART INTENT EXTRACTION: Users may provide queries with typographical errors, missing punctuation, or slightly imprecise phrasing. You must look past superficial syntax errors and deduce the true semantic intent of the query.
-2. THE 50% RELATEDNESS RULE:
-   - If the context contains a direct, explicit answer, provide it clearly and concisely.
-   - If the context does not contain a flawless direct match, but contains information that is at least 50% relevant to the user's core intent, do NOT reject it. Instead, bridge the gap transparently. Phrase it like: "While the exact target for [X] is not explicitly detailed, the policy documents outline the following related initiatives: [Y]."
-3. HARD SAFETY BOUNDARY: If the provided context shares absolutely zero semantic overlap with the query (less than 50% match), or if the query relates to completely out-of-scope topics (e.g., international affairs, unrelated countries), you must return this exact fallback string verbatim and nothing else:
-   "I cannot find this information in the provided Saudi Vision 2030 policy documents."
-4. NO INVENTED KNOWLEDGE: Never utilize pre-trained global knowledge to invent facts, metrics, or initiatives that are missing from the provided context.
+1. SYNONYM INTELLIGENCE: Treat the following concepts as identical when evaluating context:
+   - "target", "goal", "objective", "aim"
+   - "project", "initiative", "program"
+2. STRICT LINE EXTRACTION: If the context contains a matching line, data point, or bullet that answers the user's intent, extract and output ONLY those specific lines verbatim.
+   - FORBIDDEN: Do NOT generate conversational paragraphs, introductory fluff, or narrative summaries. Just return the extracted facts.
+3. ABSOLUTE OUT-OF-SCOPE BLOCKING (KEYWORD TRAP FIX): 
+   - Just because a keyword from the user's prompt (e.g., a foreign country name) appears in the text does NOT mean the document answers the question.
+   - If the document does not contain an actual answer to the question asked, or if the question is out of scope, you MUST return exactly this string and nothing else:
+     "I cannot find this information in the provided Saudi Vision 2030 policy documents."
 
 CONTEXT (your ONLY source of truth):
 {context}"""
@@ -67,16 +69,28 @@ def optimize_search_query(user_query: str) -> str:
     to maximize Qdrant hybrid search recall.
     """
     query = user_query.lower().strip()
+
+    # Structural Typo & Phonetic Normalization
+    query = re.sub(r'\b(min|mian)\b', 'main', query)
+    query = re.sub(r'\b(there|their)\b', 'the', query)
+    query = re.sub(r'\bpopullation\b', 'population', query)
+    query = re.sub(r'\b(forieng|forign)\b', 'foreign', query)
     query = re.sub(r'\bsaudiarab\b', 'saudi arabia', query)
-    query = re.sub(r'\bthere main\b', 'their main', query)
-    query = re.sub(r'\bthere new\b', 'their new', query)
     query = re.sub(r'\bvison\b', 'vision', query)
     query = re.sub(r'\b2030s?\b', '2030', query)
 
-    if "project" in query or "program" in query:
-        query += " vision realization programs VRP initiatives"
-    if "goal" in query or "pillar" in query:
-        query += " strategic objectives pillars targets"
+    # Synonym & Concept Cluster Mapping (Plural & Boundary Resilient)
+    query = re.sub(
+        r'\b(targets?|goals?|objectives?|aims?|purpos(e|es)?)\b', 
+        'strategic objectives pillars targets goals', 
+        query
+    )
+    query = re.sub(
+        r'\b(projects?|initiatives?|programs?)\b', 
+        'vision realization programs VRP initiatives projects', 
+        query
+    )
+
     if "oil" in query or "economy" in query:
         query += " non-oil GDP diversification revenue"
 
