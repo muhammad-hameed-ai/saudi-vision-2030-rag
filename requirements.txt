@@ -2,7 +2,6 @@ fastapi
 uvicorn
 qdrant-client
 requests
-langchain-huggingface
-sentence-transformers
+langchain-community
 python-dotenv
 pydantic
