@@ -10,7 +10,7 @@ Features:
 import os
 import ollama
 from typing import Tuple, List
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
@@ -20,11 +20,9 @@ def get_vector_store() -> QdrantVectorStore:
     Dynamically falls back to localhost if cloud environment variables are missing.
     """
     # 1. Serverless Low-RAM Embeddings Config (Fixes Render Free-Tier RAM limits)
-    embeddings = HuggingFaceInferenceAPIEmbeddings(
-        api_key=os.getenv("HF_TOKEN"),
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        # Fixes the deprecated Hugging Face domain DNS resolution failure (Errno -5)
-        api_url="https://router.huggingface.co/hf-inference/models"
+    embeddings = HuggingFaceEndpointEmbeddings(
+        model="sentence-transformers/all-MiniLM-L6-v2",
+        huggingfacehub_api_token=os.getenv("HF_TOKEN"),
     )
 
     # 2. Dynamic Connection Routing

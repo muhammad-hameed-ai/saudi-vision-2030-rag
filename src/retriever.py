@@ -6,7 +6,7 @@ Universal Query API and Reciprocal Rank Fusion (RRF).
 import os
 from dataclasses import dataclass, field
 from typing import List, Optional
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
 
@@ -62,15 +62,13 @@ class HybridRetriever:
                 raise QdrantUnavailableError(f"Cannot bind socket to Qdrant cluster host: {e}")
         return self._client
 
-    def _get_dense_model(self) -> HuggingFaceInferenceAPIEmbeddings:
+    def _get_dense_model(self) -> HuggingFaceEndpointEmbeddings:
         """Initializes serverless cloud embedding client to eliminate local RAM usage spikes."""
         if self._dense_model is None:
             print("[INFO] Mounting serverless inference handler: sentence-transformers/all-MiniLM-L6-v2")
-            self._dense_model = HuggingFaceInferenceAPIEmbeddings(
-                api_key=os.getenv("HF_TOKEN"),
-                model_name="sentence-transformers/all-MiniLM-L6-v2",
-                # Hard fix for the deprecated domain resolution crash ([Errno -5])
-                api_url="https://router.huggingface.co/hf-inference/models"
+            self._dense_model = HuggingFaceEndpointEmbeddings(
+                model="sentence-transformers/all-MiniLM-L6-v2",
+                huggingfacehub_api_token=os.getenv("HF_TOKEN"),
             )
         return self._dense_model
 

@@ -3,5 +3,6 @@ uvicorn
 qdrant-client
 requests
 langchain-community
+langchain-huggingface
 python-dotenv
 pydantic
