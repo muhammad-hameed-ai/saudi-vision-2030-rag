@@ -1,23 +1,24 @@
 """
-Hybrid Retriever: Dense (MiniLM) + Sparse (BM25) search with Qdrant's
+Hybrid Retriever: Dense (MiniLM API) + Sparse (BM25) search with Qdrant's
 Universal Query API and Reciprocal Rank Fusion (RRF).
 """
 
 import os
 from dataclasses import dataclass, field
-from langchain_huggingface import HuggingFaceEmbeddings
+from typing import List, Optional
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
 
 
 class QdrantUnavailableError(Exception):
-    """Raised when Qdrant is unreachable."""
+    """Raised when Qdrant cluster infrastructure is unreachable."""
     pass
 
 
 @dataclass
 class RetrievedChunk:
-    """A single retrieved document chunk with metadata."""
+    """A single retrieved document chunk with production metadata mapping."""
     content: str
     source: str
     page: int
@@ -28,47 +29,60 @@ class RetrievedChunk:
 
 class HybridRetriever:
     """
-    Two-stage retriever:
-      1. Dense cosine similarity via sentence-transformers/all-MiniLM-L6-v2
+    Two-stage production-grade retriever:
+      1. Serverless Dense inference via sentence-transformers/all-MiniLM-L6-v2 (Low RAM)
       2. Sparse BM25 keyword matching via Qdrant/bm25 (fastembed)
-      3. Fused via Reciprocal Rank Fusion (RRF)
+      3. Dynamic multi-vector fusion via Reciprocal Rank Fusion (RRF)
     """
 
     COLLECTION_NAME = "saudi_vision_2030"
     DENSE_VECTOR_NAME = "dense"
     SPARSE_VECTOR_NAME = "sparse"
 
-    def __init__(self, qdrant_url: str = None):
-        self.qdrant_url = qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
+    def __init__(self, qdrant_url: Optional[str] = None):
+        # Dynamically read cloud variables first, fallback gracefully to localhost
+        self.qdrant_url = qdrant_url or os.getenv("QDRANT_CLOUD_URL") or os.getenv("QDRANT_URL", "http://localhost:6333")
+        self.qdrant_api_key = os.getenv("QDRANT_CLOUD_API_KEY")
+        
         self._client = None
         self._dense_model = None
         self._sparse_model = None
 
     def _get_client(self) -> QdrantClient:
+        """Initializes a secured QdrantClient instance with token authentication mapping."""
         if self._client is None:
             try:
-                self._client = QdrantClient(url=self.qdrant_url, timeout=10)
+                # Inject token key for secure Qdrant Cloud handshakes
+                self._client = QdrantClient(
+                    url=self.qdrant_url, 
+                    api_key=self.qdrant_api_key,
+                    timeout=60.0
+                )
             except Exception as e:
-                raise QdrantUnavailableError(f"Cannot connect to Qdrant at {self.qdrant_url}: {e}")
+                raise QdrantUnavailableError(f"Cannot bind socket to Qdrant cluster host: {e}")
         return self._client
 
-    def _get_dense_model(self):
+    def _get_dense_model(self) -> HuggingFaceInferenceAPIEmbeddings:
+        """Initializes serverless cloud embedding client to eliminate local RAM usage spikes."""
         if self._dense_model is None:
-            print("Loading dense embedding model: sentence-transformers/all-MiniLM-L6-v2")
-            self._dense_model = HuggingFaceEmbeddings(
+            print("[INFO] Mounting serverless inference handler: sentence-transformers/all-MiniLM-L6-v2")
+            self._dense_model = HuggingFaceInferenceAPIEmbeddings(
+                api_key=os.getenv("HF_TOKEN"),
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
-                model_kwargs={"device": "cpu"},
+                # Hard fix for the deprecated domain resolution crash ([Errno -5])
+                api_url="https://router.huggingface.co/hf-inference/models"
             )
         return self._dense_model
 
-    def _get_sparse_model(self):
+    def _get_sparse_model(self) -> SparseTextEmbedding:
+        """Loads lightweight BM25 sparse tokenizer layer."""
         if self._sparse_model is None:
-            print("Loading sparse BM25 model: Qdrant/bm25")
+            print("[INFO] Initializing sparse BM25 vocabulary index Matrix...")
             self._sparse_model = SparseTextEmbedding("Qdrant/bm25")
         return self._sparse_model
 
     def health_check(self) -> bool:
-        """Check if Qdrant is reachable and the collection exists."""
+        """Verifies operational status of the upstream vector network pipeline."""
         try:
             client = self._get_client()
             info = client.get_collection(self.COLLECTION_NAME)
@@ -77,7 +91,7 @@ class HybridRetriever:
             return False
 
     def get_collection_info(self) -> dict:
-        """Return collection metadata for the /info endpoint."""
+        """Fetches runtime structural stats directly from remote cluster maps."""
         try:
             client = self._get_client()
             info = client.get_collection(self.COLLECTION_NAME)
@@ -88,10 +102,9 @@ class HybridRetriever:
         except Exception:
             return {"points_count": 0, "status": "unavailable"}
 
-    def retrieve(self, query: str, k: int = 20) -> list[RetrievedChunk]:
+    def retrieve(self, query: str, k: int = 20) -> List[RetrievedChunk]:
         """
-        Run hybrid search: dense + sparse prefetch, fused with RRF.
-        Returns top-k RetrievedChunk objects sorted by fused score.
+        Executes non-blocking hybrid vector extraction fused via Reciprocal Rank Fusion.
         """
         try:
             client = self._get_client()
@@ -99,17 +112,17 @@ class HybridRetriever:
             raise QdrantUnavailableError(str(e))
 
         try:
-            # Generate dense query vector
+            # 1. Dispatch cloud request for dense matrix vectors
             dense_vector = self._get_dense_model().embed_query(query)
 
-            # Generate sparse query vector
+            # 2. Local vocabulary tokenizer tokenization for keywords
             sparse_result = list(self._get_sparse_model().embed([query]))[0]
             sparse_vector = models.SparseVector(
                 indices=sparse_result.indices.tolist(),
                 values=sparse_result.values.tolist(),
             )
 
-            # Hybrid search with prefetch + RRF fusion
+            # 3. Parallel dual-query prefetch step mapped to unified RRF compiler
             results = client.query_points(
                 collection_name=self.COLLECTION_NAME,
                 prefetch=[
@@ -144,7 +157,6 @@ class HybridRetriever:
             return chunks
 
         except (ConnectionError, TimeoutError, OSError) as e:
-            raise QdrantUnavailableError(f"Qdrant query failed: {e}")
+            raise QdrantUnavailableError(f"Network error communicating with Qdrant: {e}")
         except Exception as e:
-            # Re-raise unexpected errors as-is for debugging
-            raise
+            raise RuntimeError(f"Unexpected pipeline trace break inside retriever block: {e}")
