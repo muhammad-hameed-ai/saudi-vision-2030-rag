@@ -1,9 +1,9 @@
 """
-Saudi Vision 2030 Policy Intelligence Hub — Production Grade API (V2.2)
+Saudi Vision 2030 Policy Intelligence Hub — Production Grade API (V2.3 Cloud)
 
 Architecture:
-  Hybrid Retrieval (Dense + Sparse BM25) → Cross-Encoder Reranker → LLM Generation
-  Features: Async Non-Blocking Endpoints, Dynamic Schema Validation, Structured Logging, Auto-Healing Guards
+  Hybrid Retrieval (Dense + Sparse BM25) → Cross-Encoder Reranker → Groq Cloud LLM
+  Features: Async Non-Blocking Endpoints, Dynamic Schema Validation, Structured Logging
 """
 
 import os
@@ -16,11 +16,11 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional, Any, List
 
-import ollama
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
+from groq import AsyncGroq, APIError
 
 # Local module imports
 from src.retriever import HybridRetriever, QdrantUnavailableError
@@ -32,11 +32,6 @@ from src.memory import save_message, get_session_history, summarize_history
 # ---------------------------------------------------------------------------
 # Environment & Global State Configuration
 # ---------------------------------------------------------------------------
-# Normalize Ollama binding address to prevent Python HTTP client route errors
-client_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
-if "0.0.0.0" in client_host:
-    client_host = "http://127.0.0.1:11434"
-os.environ["OLLAMA_HOST"] = client_host
 os.environ["USE_HYDE"] = os.getenv("USE_HYDE", "true")
 
 # Thread-safe global singletons
@@ -62,25 +57,27 @@ MAX_FEEDBACK_LOG = 500
 # Thread-safe health state cache
 _cached_health = {"healthy": False, "checked_at": 0.0}
 
+# Cloud LLM Settings
+GROQ_MODEL = "llama-3.1-8b-instant"
+
 
 # ---------------------------------------------------------------------------
 # Lifespan Hook (Model Preloading & Warm-up)
 # ---------------------------------------------------------------------------
 async def warmup_llm():
-    """Preloads the LLM backbone into VRAM asynchronously post-server initialization."""
-    print("[INIT] Initiating asynchronous LLM warm-up sequence...")
+    """Preloads the LLM backbone via the Groq Cloud API asynchronously."""
+    print("[INIT] Initiating asynchronous Groq API warm-up sequence...")
     await asyncio.sleep(2)  
     try:
-        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-        client = ollama.AsyncClient(host=host, timeout=60.0)
-        await client.chat(
-            model="llama3.2:1b",
+        client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
+        await client.chat.completions.create(
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": "ping"}],
-            options={"num_predict": 1}
+            max_tokens=2
         )
-        print("[INIT] LLM engine warm-up verified. Weights loaded successfully.")
+        print("[INIT] Groq cloud inference engine reachable. Warm-up successful.")
     except Exception as e:
-        print(f"[WARN] Non-fatal: LLM model warm-up skipped (Engine offline/sleeping): {e}")
+        print(f"[WARN] Non-fatal: Groq connection failed during warmup: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -116,7 +113,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Saudi Vision 2030 Policy Intelligence Hub API",
     description="Enterprise-grade production asynchronous RAG engine utilizing Hybrid Architecture.",
-    version="2.2.0",
+    version="2.3.0",
     lifespan=lifespan,
 )
 
@@ -134,9 +131,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 def _require_qdrant():
     """
-    Self-healing fail-closed cluster safety mechanism. Uses an adaptive TTL cache 
-    when performance is stable, and triggers immediate connection verification 
-    upon unexpected platform dropouts.
+    Self-healing fail-closed cluster safety mechanism.
     """
     now = time.time()
     if _cached_health["healthy"] and (now - _cached_health["checked_at"] < HEALTH_CHECK_TTL):
@@ -221,8 +216,7 @@ class FeedbackRequest(BaseModel):
 @app.post("/api/chat")
 async def process_rag_chat(request: ChatRequest):
     """
-    Main asynchronous interactive dashboard route. Offloads dense computation matrix 
-    to managed system worker pools via asyncio to ensure non-blocking scalability.
+    Main asynchronous interactive dashboard route utilizing the Groq SDK.
     """
     _require_qdrant()
     start_time = time.time()
@@ -255,36 +249,31 @@ async def process_rag_chat(request: ChatRequest):
         f"CONTEXT:\n{context}"
     )
 
-    # Step 5: Asynchronous LLM Text Synthesis Loop
+    # Step 5: Asynchronous Groq LLM Text Synthesis Loop
     try:
-        client = ollama.AsyncClient(host=os.environ["OLLAMA_HOST"], timeout=120.0)
-        response = await client.chat(
-            model="llama3.2:1b",
+        client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"), timeout=30.0)
+        response = await client.chat.completions.create(
+            model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.question}
             ],
-            options={
-                "num_ctx": 2048,
-                "temperature": 0.2,
-                "top_k": 40,
-                "repeat_penalty": 1.1,
-            },
+            max_tokens=2048,
+            temperature=0.2,
+            top_p=1.0,
         )
-        ai_answer = response["message"]["content"].strip()
+        ai_answer = response.choices[0].message.content.strip()
         
-        # Fixed state memory bug: Corrected execution parameters to bind cleanly to 'ai_answer'
         await asyncio.to_thread(save_message, request.session_id, "user", request.question)
         await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
         asyncio.create_task(summarize_history(request.session_id))
         
+    except APIError as e:
+        return JSONResponse(
+            status_code=503,
+            content={"error": f"Groq cloud endpoints unreachable: {str(e)}"}
+        )
     except Exception as e:
-        err_str = str(e).lower()
-        if "connect" in err_str or "timeout" in err_str:
-            return JSONResponse(
-                status_code=503,
-                content={"error": "LLM infrastructure endpoint timeout. Please verify backend status."}
-            )
         raise HTTPException(status_code=504, detail=f"LLM compilation context failed: {str(e)[:150]}")
 
     # Step 6: Telemetry Parsing
@@ -298,7 +287,6 @@ async def process_rag_chat(request: ChatRequest):
 
     source_citations = []
     for chunk in reranked:
-        # Convert raw Cross-Encoder scores to standard logistic probability metric
         normalized_score = 1 / (1 + math.exp(-chunk.score))
         source_citations.append({
             "file": _clean_source_path(chunk.source),
@@ -332,7 +320,7 @@ async def process_rag_chat(request: ChatRequest):
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(request: ChatRequest):
-    """Programmatic standard validation endpoint mirroring the async core pipeline."""
+    """Programmatic standard validation endpoint."""
     global request_count
     _require_qdrant()
 
@@ -359,21 +347,18 @@ async def ask(request: ChatRequest):
     )
 
     try:
-        client = ollama.AsyncClient(host=os.environ["OLLAMA_HOST"], timeout=120.0)
-        response = await client.chat(
-            model="llama3.2:1b",
+        client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"), timeout=30.0)
+        response = await client.chat.completions.create(
+            model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.question}
             ],
-            options={
-                "num_ctx": 2048,
-                "temperature": 0.2,
-                "top_k": 40,
-                "repeat_penalty": 1.1,
-            },
+            max_tokens=2048,
+            temperature=0.2,
+            top_p=1.0,
         )
-        ai_answer = response["message"]["content"].strip()
+        ai_answer = response.choices[0].message.content.strip()
         await asyncio.to_thread(save_message, request.session_id, "user", request.question)
         await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
         asyncio.create_task(summarize_history(request.session_id))
@@ -413,7 +398,7 @@ async def ask(request: ChatRequest):
         retrieval_chunks=len(candidates),
         reranked_chunks=len(reranked),
         latency_ms=latency_ms,
-        model="llama3.2:1b",
+        model=GROQ_MODEL,
         timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -424,7 +409,8 @@ async def ask(request: ChatRequest):
 @app.get("/")
 def read_index():
     """Serves the static production UI matrix directly from root context."""
-    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "index.html")
+    # Fixed path resolution: looks in the same directory as app.py
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
     return FileResponse(path)
 
 @app.get("/health")
@@ -438,7 +424,7 @@ def health():
     return {
         "status": "healthy" if healthy else "degraded",
         "qdrant": "connected" if healthy else "unreachable",
-        "model": "llama3.2:1b",
+        "model": f"{GROQ_MODEL} (Groq Cloud)",
         "vector_store": "saudi_vision_2030",
         "architecture": "hybrid_search + cross_encoder_reranker",
         "requests_served": request_count + SYSTEM_STATS["queries_served_this_session"],
@@ -470,7 +456,7 @@ def get_pipeline_info():
             "reranker_model": reranker.model_name,
             "retrieval_k": RETRIEVAL_K,
             "reranked_k": RERANK_TOP_K,
-            "llm_backbone": "llama3.2:1b (Ollama Engine)",
+            "llm_backbone": f"{GROQ_MODEL} (Groq API)",
         },
     }
 
