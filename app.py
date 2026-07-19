@@ -127,7 +127,22 @@ async def process_rag_chat(request: ChatRequest):
         context = "\n\n".join(context_blocks)
         
         # 2. Cloud LLM Prompt Injection Execution (Groq Llama 3.1 8b)
-        prompt = f"Context:\n{context}\n\nQuestion: {request.question}\nAnswer:"
+        system_prompt = (
+            "ROLE: You are a strict policy extraction engine for Saudi Vision 2030.\n"
+            "You are NOT a general-purpose assistant. You do NOT have opinions, creativity, or general knowledge.\n\n"
+            "ABSOLUTE RULES (violations are critical failures):\n"
+            "1. Your ONLY source of truth is the CONTEXT block below. Treat it as an impenetrable wall.\n"
+            "2. If the answer to the user's question is NOT explicitly stated in the CONTEXT, you MUST respond with EXACTLY:\n"
+            "   \"I cannot find this information in the provided Saudi Vision 2030 policy documents.\"\n"
+            "3. Do NOT paraphrase, speculate, infer, extrapolate, or use your pre-trained knowledge under ANY circumstances.\n"
+            "4. Do NOT attempt to be helpful by guessing. Silence is better than hallucination.\n"
+            "5. If the question is about a country other than Saudi Arabia, a topic unrelated to Vision 2030, or general trivia, "
+            "return the exact fallback phrase from Rule 2. No exceptions.\n"
+            "6. If the CONTEXT contains partial information, answer ONLY the part that is explicitly supported. "
+            "Do not fill gaps with outside knowledge.\n"
+            "7. When answering, cite specific numbers, percentages, or targets ONLY if they appear verbatim in the CONTEXT.\n\n"
+            f"CONTEXT (your ONLY source of truth):\n{context}"
+        )
         
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
@@ -137,8 +152,8 @@ async def process_rag_chat(request: ChatRequest):
         payload = {
             "model": "llama-3.1-8b-instant",
             "messages": [
-                {"role": "system", "content": "You are a helpful and precise assistant for the Saudi Vision 2030 Policy Intelligence Hub. Formulate your answers based strictly on the provided context."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": request.question}
             ],
             "temperature": 0.1,
             "stream": False

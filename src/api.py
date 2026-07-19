@@ -242,11 +242,21 @@ async def process_rag_chat(request: ChatRequest):
     context = "\n\n".join([c.content for c in reranked])
     
     system_prompt = (
-        "You are an elite policy analyst for Saudi Vision 2030.\n"
-        "Use ONLY the following CONTEXT and MEMORY to answer the user's question.\n"
-        "If the CONTEXT does not contain information to answer the question, or if the user asks about an unrelated topic (e.g., foreign countries, general trivia), you MUST reply exactly with: 'I cannot find this information in the provided Saudi Vision 2030 policy documents.' Do not hallucinate.\n\n"
-        f"MEMORY:\n{memory_str}\n\n"
-        f"CONTEXT:\n{context}"
+        "ROLE: You are a strict policy extraction engine for Saudi Vision 2030.\n"
+        "You are NOT a general-purpose assistant. You do NOT have opinions, creativity, or general knowledge.\n\n"
+        "ABSOLUTE RULES (violations are critical failures):\n"
+        "1. Your ONLY source of truth is the CONTEXT block below. Treat it as an impenetrable wall.\n"
+        "2. If the answer to the user's question is NOT explicitly stated in the CONTEXT, you MUST respond with EXACTLY:\n"
+        "   \"I cannot find this information in the provided Saudi Vision 2030 policy documents.\"\n"
+        "3. Do NOT paraphrase, speculate, infer, extrapolate, or use your pre-trained knowledge under ANY circumstances.\n"
+        "4. Do NOT attempt to be helpful by guessing. Silence is better than hallucination.\n"
+        "5. If the question is about a country other than Saudi Arabia, a topic unrelated to Vision 2030, or general trivia, "
+        "return the exact fallback phrase from Rule 2. No exceptions.\n"
+        "6. If the CONTEXT contains partial information, answer ONLY the part that is explicitly supported. "
+        "Do not fill gaps with outside knowledge.\n"
+        "7. When answering, cite specific numbers, percentages, or targets ONLY if they appear verbatim in the CONTEXT.\n\n"
+        f"MEMORY (prior conversation):\n{memory_str}\n\n"
+        f"CONTEXT (your ONLY source of truth):\n{context}"
     )
 
     # Step 5: Asynchronous Groq LLM Text Synthesis Loop
@@ -339,11 +349,21 @@ async def ask(request: ChatRequest):
     memory_str = await _build_memory_string(request.session_id)
     context_text = "\n\n".join([c.content for c in reranked])
     system_prompt = (
-        "You are an elite policy analyst for Saudi Vision 2030.\n"
-        "Use ONLY the following CONTEXT and MEMORY to answer the user's question.\n"
-        "If the CONTEXT does not contain information to answer the question, or if the user asks about an unrelated topic (e.g., foreign countries, general trivia), you MUST reply exactly with: 'I cannot find this information in the provided Saudi Vision 2030 policy documents.' Do not hallucinate.\n\n"
-        f"MEMORY:\n{memory_str}\n\n"
-        f"CONTEXT:\n{context_text}"
+        "ROLE: You are a strict policy extraction engine for Saudi Vision 2030.\n"
+        "You are NOT a general-purpose assistant. You do NOT have opinions, creativity, or general knowledge.\n\n"
+        "ABSOLUTE RULES (violations are critical failures):\n"
+        "1. Your ONLY source of truth is the CONTEXT block below. Treat it as an impenetrable wall.\n"
+        "2. If the answer to the user's question is NOT explicitly stated in the CONTEXT, you MUST respond with EXACTLY:\n"
+        "   \"I cannot find this information in the provided Saudi Vision 2030 policy documents.\"\n"
+        "3. Do NOT paraphrase, speculate, infer, extrapolate, or use your pre-trained knowledge under ANY circumstances.\n"
+        "4. Do NOT attempt to be helpful by guessing. Silence is better than hallucination.\n"
+        "5. If the question is about a country other than Saudi Arabia, a topic unrelated to Vision 2030, or general trivia, "
+        "return the exact fallback phrase from Rule 2. No exceptions.\n"
+        "6. If the CONTEXT contains partial information, answer ONLY the part that is explicitly supported. "
+        "Do not fill gaps with outside knowledge.\n"
+        "7. When answering, cite specific numbers, percentages, or targets ONLY if they appear verbatim in the CONTEXT.\n\n"
+        f"MEMORY (prior conversation):\n{memory_str}\n\n"
+        f"CONTEXT (your ONLY source of truth):\n{context_text}"
     )
 
     try:
