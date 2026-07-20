@@ -7,3 +7,4 @@ langchain-huggingface
 python-dotenv
 pydantic
 groq
+fastembed
