@@ -16,7 +16,6 @@ import math
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional, Any, List
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
@@ -34,9 +33,6 @@ from src.memory import save_message, get_session_history, summarize_history
 # ---------------------------------------------------------------------------
 # Environment & Global State Configuration
 # ---------------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent.parent
-INDEX_PATH = BASE_DIR / "index.html"
-
 os.environ["USE_HYDE"] = os.getenv("USE_HYDE", "true")
 
 # Thread-safe global singletons
@@ -456,12 +452,12 @@ async def ask(request: ChatRequest):
 # ---------------------------------------------------------------------------
 # Telemetry Analytics & Metadata Core Endpoints
 # ---------------------------------------------------------------------------
-@app.get("/", response_class=FileResponse)
-async def read_index():
+@app.get("/")
+def read_index():
     """Serves the static production UI matrix directly from root context."""
-    if not INDEX_PATH.is_file():
-        return JSONResponse(status_code=404, content={"error": "index.html not found at project root"})
-    return FileResponse(INDEX_PATH)
+    # Fixed path resolution: looks in the same directory as app.py
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    return FileResponse(path)
 
 @app.get("/health")
 def health():
@@ -472,7 +468,7 @@ def health():
         healthy = False
         
     return {
-        "status": "ok" if healthy else "degraded",
+        "status": "healthy" if healthy else "degraded",
         "qdrant": "connected" if healthy else "unreachable",
         "model": f"{GROQ_MODEL} (Groq Cloud)",
         "vector_store": "saudi_vision_2030",
