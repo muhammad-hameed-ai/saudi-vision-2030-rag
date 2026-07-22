@@ -135,15 +135,37 @@ class HybridRetriever:
             results = client.query_points(
                 collection_name=self.COLLECTION_NAME,
                 prefetch=[
+                    # 1. Primary Dense Query (Semantic matches)
                     models.Prefetch(
                         query=dense_vector,
                         using=self.DENSE_VECTOR_NAME,
                         limit=k,
                     ),
+                    # 2. Primary Sparse Query (Exact keyword matches)
                     models.Prefetch(
                         query=sparse_vector,
                         using=self.SPARSE_VECTOR_NAME,
                         limit=k,
+                    ),
+                    # 3. Policy Overview Booster: 
+                    # Over-indexes on broad query terms against general documents to counteract 
+                    # financial circular term-frequency dominance.
+                    models.Prefetch(
+                        query=dense_vector,
+                        using=self.DENSE_VECTOR_NAME,
+                        filter=models.Filter(
+                            should=[
+                                models.FieldCondition(
+                                    key="metadata.section",
+                                    match=models.MatchValue(value="General"),
+                                ),
+                                models.FieldCondition(
+                                    key="metadata.source",
+                                    match=models.MatchText(text="vision2030"),
+                                ),
+                            ]
+                        ),
+                        limit=max(1, k // 2),
                     ),
                 ],
                 query=models.FusionQuery(fusion=models.Fusion.RRF),
