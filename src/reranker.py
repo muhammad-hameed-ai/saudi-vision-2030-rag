@@ -6,6 +6,7 @@ Handles cross-encoder relevance scoring with dynamic return-type extraction.
 import os
 import gc
 import logging
+import traceback
 from typing import List, Any
 
 logger = logging.getLogger("vision2030.reranker")
@@ -73,7 +74,7 @@ class Reranker:
             return sorted_chunks[:top_k]
 
         except Exception as e:
-            logger.error(f"[Reranker Exception] Error during scoring: {e}")
+            logger.error(f"[Reranker Exception] Error during scoring:\n{traceback.format_exc()}")
             # Safe Fallback: Return original chunks without crashing
             return chunks[:top_k]
 

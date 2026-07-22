@@ -4,11 +4,15 @@ Universal Query API and Reciprocal Rank Fusion (RRF).
 """
 
 import os
+import logging
+import traceback
 from dataclasses import dataclass, field
 from typing import List, Optional
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
+
+logger = logging.getLogger("vision2030.retriever")
 
 
 class QdrantUnavailableError(Exception):
@@ -59,6 +63,7 @@ class HybridRetriever:
                     timeout=60.0
                 )
             except Exception as e:
+                logger.error(f"[Retriever] Failed to bind to Qdrant cluster:\n{traceback.format_exc()}")
                 raise QdrantUnavailableError(f"Cannot bind socket to Qdrant cluster host: {e}")
         return self._client
 
@@ -107,6 +112,7 @@ class HybridRetriever:
         try:
             client = self._get_client()
         except Exception as e:
+            logger.error(f"[Retriever] Qdrant Client initialization failed:\n{traceback.format_exc()}")
             raise QdrantUnavailableError(str(e))
 
         try:
@@ -155,6 +161,8 @@ class HybridRetriever:
             return chunks
 
         except (ConnectionError, TimeoutError, OSError) as e:
+            logger.error(f"[Retriever] Network error communicating with Qdrant:\n{traceback.format_exc()}")
             raise QdrantUnavailableError(f"Network error communicating with Qdrant: {e}")
         except Exception as e:
+            logger.error(f"[Retriever] Unexpected pipeline break inside retriever block:\n{traceback.format_exc()}")
             raise RuntimeError(f"Unexpected pipeline trace break inside retriever block: {e}")

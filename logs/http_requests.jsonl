@@ -249,3 +249,4 @@
 {"timestamp": "2026-07-20T05:06:51.909960+00:00", "level": "INFO", "logger": "rag.http", "message": "GET /api/pipeline-info 200", "method": "GET", "path": "/api/pipeline-info", "status_code": 200, "latency_ms": 5119.8, "client": "127.0.0.1"}
 {"timestamp": "2026-07-20T05:07:05.537601+00:00", "level": "INFO", "logger": "rag.http", "message": "GET /favicon.ico 404", "method": "GET", "path": "/favicon.ico", "status_code": 404, "latency_ms": 1.03, "client": "127.0.0.1"}
 {"timestamp": "2026-07-22T07:27:11.548506+00:00", "level": "INFO", "logger": "rag.http", "message": "GET / 200", "method": "GET", "path": "/", "status_code": 200, "latency_ms": 136.38, "client": "127.0.0.1"}
+{"timestamp": "2026-07-22T12:33:40.136639+00:00", "level": "INFO", "logger": "rag.http", "message": "POST /api/chat 503", "method": "POST", "path": "/api/chat", "status_code": 503, "latency_ms": 4153.37, "client": "127.0.0.1"}

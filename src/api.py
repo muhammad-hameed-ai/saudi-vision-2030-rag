@@ -7,7 +7,12 @@ Architecture:
 """
 
 import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import re
+import gc
 import asyncio
 import json
 import uuid
@@ -20,7 +25,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional, Any, List
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
@@ -228,7 +233,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Internal Core Helper Methods
 # ---------------------------------------------------------------------------
-def _require_qdrant():
+async def _require_qdrant():
     """Self-healing vector store verification."""
     now = time.time()
     if _cached_health["healthy"] and (now - _cached_health["checked_at"] < HEALTH_CHECK_TTL):
@@ -236,9 +241,9 @@ def _require_qdrant():
     
     try:
         retriever_obj = get_retriever()
-        is_healthy = retriever_obj.health_check()
+        is_healthy = await asyncio.to_thread(retriever_obj.health_check)
     except Exception as e:
-        logger.warning(f"[HEALTH CHECK FAILED] Vector check exception: {e}")
+        logger.warning(f"[HEALTH CHECK FAILED] Vector check exception:\n{traceback.format_exc()}")
         is_healthy = False
 
     _cached_health["healthy"] = is_healthy
@@ -311,12 +316,15 @@ class FeedbackRequest(BaseModel):
 # API Routes
 # ---------------------------------------------------------------------------
 @app.post("/api/chat")
-async def process_rag_chat(request: ChatRequest):
+async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTasks):
     """Main interactive chat endpoint with full exception diagnostic logging."""
     start_time = time.time()
     
+    # Register forced garbage collection after the response is sent
+    background_tasks.add_task(gc.collect)
+    
     try:
-        _require_qdrant()
+        await _require_qdrant()
         top_k = request.k
 
         retriever_obj = get_retriever()
@@ -424,9 +432,12 @@ async def process_rag_chat(request: ChatRequest):
         )
 
 @app.post("/ask", response_model=AskResponse)
-async def ask(request: ChatRequest):
+async def ask(request: ChatRequest, background_tasks: BackgroundTasks):
     """Programmatic standard validation endpoint."""
     global request_count
+    
+    # Register forced garbage collection after the response is sent
+    background_tasks.add_task(gc.collect)
     
     if len(request.question) > 500:
         raise HTTPException(status_code=422, detail="Query exceeds maximum allowed limit of 500 characters.")
@@ -434,7 +445,7 @@ async def ask(request: ChatRequest):
     t0 = time.time()
 
     try:
-        _require_qdrant()
+        await _require_qdrant()
         retriever_obj = get_retriever()
         reranker_obj = get_reranker()
 
