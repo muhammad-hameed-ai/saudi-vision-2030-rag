@@ -4,9 +4,9 @@ uvicorn[standard]
 pydantic
 python-dotenv
 # --- Vector DB & Retrieval ---
-qdrant-client
-fastembed
+qdrant-client>=1.7.0
+fastembed>=0.2.0
 langchain-huggingface
 langchain-community
 # --- Cloud LLM ---
-groq
+groq>=0.4.0
