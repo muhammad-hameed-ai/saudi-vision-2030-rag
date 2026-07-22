@@ -26,10 +26,11 @@ from contextlib import asynccontextmanager
 from typing import Optional, Any, List
 
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 from groq import AsyncGroq, APIError
+from cachetools import TTLCache
 
 # Local module imports
 from src.retriever import HybridRetriever, QdrantUnavailableError
@@ -111,6 +112,9 @@ MAX_FEEDBACK_LOG = 500
 
 # Health state cache
 _cached_health = {"healthy": True, "checked_at": 0.0}
+
+# Global In-Memory Cache for Streaming
+RAG_CACHE = TTLCache(maxsize=100, ttl=3600)
 
 # Cloud LLM Settings
 GROQ_MODEL = "llama-3.1-8b-instant"
@@ -315,13 +319,18 @@ class FeedbackRequest(BaseModel):
 # API Routes
 # ---------------------------------------------------------------------------
 @app.post("/api/chat")
-async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTasks):
-    """Main interactive chat endpoint with full exception diagnostic logging."""
-    start_time = time.time()
-    
-    # Register forced garbage collection after the response is sent
-    background_tasks.add_task(gc.collect)
-    
+async def generate_rag_stream(request: ChatRequest):
+    """Async generator to stream RAG tokens and metadata via SSE."""
+    query = request.question
+    query_key = query.strip().lower()
+
+    if query_key in RAG_CACHE:
+        cached = RAG_CACHE[query_key]
+        yield f"data: {json.dumps({'type': 'metadata', 'sources': cached['sources'], 'cached': True})}\n\n"
+        yield f"data: {json.dumps({'token': cached['response']})}\n\n"
+        yield "data: [DONE]\n\n"
+        return
+
     try:
         await _require_qdrant()
         top_k = request.k
@@ -329,48 +338,12 @@ async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTas
         retriever_obj = get_retriever()
         reranker_obj = get_reranker()
 
-        optimized_query = optimize_search_query(request.question)
+        optimized_query = optimize_search_query(query)
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
-        
-        if use_hyde:
-            search_query = await generate_hypothesis(optimized_query)
-        else:
-            search_query = optimized_query
+        search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
         
         candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
-        reranked = await asyncio.to_thread(reranker_obj.rerank, request.question, candidates, top_k=top_k)
-
-        memory_str = await _build_memory_string(request.session_id)
-        context = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context)
-
-        client = get_groq_client()
-        response = await client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.question}
-            ],
-            max_tokens=2048,
-            temperature=0.2,
-            top_p=1.0,
-        )
-        ai_answer = response.choices[0].message.content.strip()
-        
-        try:
-            await asyncio.to_thread(save_message, request.session_id, "user", request.question)
-            await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
-            asyncio.create_task(summarize_history(request.session_id))
-        except Exception as mem_err:
-            logger.warning(f"Session history save skipped: {mem_err}")
-
-        elapsed_time = time.time() - start_time
-        elapsed_ms = round(elapsed_time * 1000, 2)
-        
-        SYSTEM_STATS["queries_served_this_session"] += 1
-        SYSTEM_STATS["latency_history"].append(elapsed_time)
-        if len(SYSTEM_STATS["latency_history"]) > MAX_LATENCY_HISTORY:
-            SYSTEM_STATS["latency_history"].pop(0)
+        reranked = await asyncio.to_thread(reranker_obj.rerank, query, candidates, top_k=top_k)
 
         source_citations = []
         for chunk in reranked:
@@ -382,53 +355,65 @@ async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTas
                 "score": round(_sigmoid(raw_score), 4),
             })
 
-        await asyncio.to_thread(
-            log_rag_query,
-            query=request.question,
-            sources=source_citations,
-            reranker_scores=[getattr(c, 'score', 0.0) for c in reranked],
-            answer=ai_answer,
-            latency_ms=elapsed_ms,
-            retrieval_k=len(candidates),
-            reranked_k=len(reranked),
+        yield f"data: {json.dumps({'type': 'metadata', 'sources': source_citations, 'cached': False})}\n\n"
+
+        memory_str = await _build_memory_string(request.session_id)
+        context = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context)
+
+        client = get_groq_client()
+        stream = await client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query}
+            ],
+            stream=True,
+            temperature=0.2,
+            max_tokens=2048,
         )
 
-        return {
-            "session_id": request.session_id,
-            "answer": ai_answer,
-            "citations": source_citations,
-            "metrics": {
-                "latency_seconds": round(elapsed_time, 3),
-                "retrieval_depth_k": RETRIEVAL_K,
-                "reranked_k": len(reranked),
-            },
+        full_response = ""
+        async for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if token:
+                full_response += token
+                yield f"data: {json.dumps({'token': token})}\n\n"
+
+        RAG_CACHE[query_key] = {
+            "sources": source_citations,
+            "response": full_response
         }
 
-    except QdrantUnavailableError as e:
-        logger.error(f"[503] Qdrant Engine Error: {e}")
-        raise HTTPException(status_code=503, detail="Vector search engine timed out or unavailable.")
-    
-    except APIError as e:
-        logger.error(f"[503] Groq Cloud API Error: {e}")
-        return JSONResponse(
-            status_code=503,
-            content={"error": f"Groq cloud endpoints unreachable: {str(e)}"}
-        )
-    
-    except HTTPException:
-        raise
-        
+        # Background history save
+        try:
+            await asyncio.to_thread(save_message, request.session_id, "user", query)
+            await asyncio.to_thread(save_message, request.session_id, "assistant", full_response)
+            asyncio.create_task(summarize_history(request.session_id))
+        except Exception as mem_err:
+            logger.warning(f"Session history save skipped: {mem_err}")
+
+        yield "data: [DONE]\n\n"
+
     except Exception as e:
-        stack_trace = traceback.format_exc()
-        logger.error(f"=== UNHANDLED RAG PIPELINE EXCEPTION ===\n{stack_trace}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": str(e),
-                "type": type(e).__name__,
-                "detail": "Internal processing error during retrieval, reranking, or completion."
-            }
-        )
+        logger.error(f"Stream generation error:\n{traceback.format_exc()}")
+        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+@app.post("/api/chat")
+async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTasks):
+    """Main interactive chat endpoint using Server-Sent Events (SSE)."""
+    # Register forced garbage collection after the response is sent
+    background_tasks.add_task(gc.collect)
+    
+    return StreamingResponse(
+        generate_rag_stream(request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(request: ChatRequest, background_tasks: BackgroundTasks):

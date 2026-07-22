@@ -3,6 +3,7 @@ fastapi
 uvicorn[standard]
 pydantic
 python-dotenv
+cachetools>=5.3.0
 # --- Vector DB & Retrieval ---
 qdrant-client>=1.7.0
 fastembed>=0.2.0
