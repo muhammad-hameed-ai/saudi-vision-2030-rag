@@ -116,6 +116,14 @@ _cached_health = {"healthy": True, "checked_at": 0.0}
 # Global In-Memory Cache for Streaming
 RAG_CACHE = TTLCache(maxsize=100, ttl=3600)
 
+_rag_pipeline_lock = None
+
+def get_pipeline_lock() -> asyncio.Lock:
+    global _rag_pipeline_lock
+    if _rag_pipeline_lock is None:
+        _rag_pipeline_lock = asyncio.Lock()
+    return _rag_pipeline_lock
+
 # Cloud LLM Settings
 GROQ_MODEL = "llama-3.1-8b-instant"
 
@@ -342,8 +350,10 @@ async def generate_rag_stream(request: ChatRequest):
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
         search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
         
-        candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
-        reranked = await asyncio.to_thread(reranker_obj.rerank, query, candidates, top_k=top_k)
+        lock = get_pipeline_lock()
+        async with lock:
+            candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
+            reranked = await asyncio.to_thread(reranker_obj.rerank, query, candidates, top_k=top_k)
 
         source_citations = []
         for chunk in reranked:
@@ -355,6 +365,8 @@ async def generate_rag_stream(request: ChatRequest):
                 "score": round(_sigmoid(raw_score), 4),
             })
 
+        # Render's proxy buffers small chunks. Padding forces immediate flush to UI.
+        yield ":" + " " * 2048 + "\n\n"
         yield f"data: {json.dumps({'type': 'metadata', 'sources': source_citations, 'cached': False})}\n\n"
 
         memory_str = await _build_memory_string(request.session_id)
