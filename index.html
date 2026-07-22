@@ -451,12 +451,11 @@
         let pulseData = Array(30).fill(0);
         let introCardHtml = null; // preserved intro block
 
-        marked.setOptions({ breaks: true, gfm: true });
-
-        // Security Helpers
+        // Global escapeHtml helper
         function escapeHtml(unsafe) {
-            if (typeof unsafe !== 'string') return unsafe;
+            if (!unsafe) return "";
             return unsafe
+                .toString()
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
@@ -464,8 +463,22 @@
                 .replace(/'/g, "&#039;");
         }
 
+        // Safe marked API wrapper
+        function safeMarked(text) {
+            if (!text) return "";
+            return (typeof marked.parse === 'function') ? marked.parse(text) : marked(text);
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
+            
+            // Init Markdown safely
+            if (typeof marked.use === 'function') {
+                marked.use({ breaks: true, gfm: true });
+            } else if (typeof marked.setOptions === 'function') {
+                marked.setOptions({ breaks: true, gfm: true });
+            }
+            
             document.getElementById("setting-backend-url").value = BASE_BACKEND_URL;
             document.getElementById("endpoint-label").innerText = BASE_BACKEND_URL;
 
@@ -1141,7 +1154,7 @@
             container.dataset.rawMessage += token;
             
             // Re-parse markdown
-            const rawHtml = marked.parse(container.dataset.rawMessage);
+            const rawHtml = safeMarked(container.dataset.rawMessage);
             contentBox.innerHTML = DOMPurify.sanitize(rawHtml);
             
             const thread = document.getElementById("chat-thread");
