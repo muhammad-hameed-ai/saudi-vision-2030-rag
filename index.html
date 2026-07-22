@@ -498,6 +498,13 @@
         });
 
         // UI Helpers
+        function handleEnter(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!isSubmitting) submitQuery();
+            }
+        }
+
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight < 128 ? textarea.scrollHeight : 128) + 'px';
@@ -959,11 +966,20 @@
         }
 
         async function submitQuery(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
             const inputField = document.getElementById("user-input");
             const sendBtn = document.getElementById("send-btn");
+            
+            if (isSubmitting) {
+                // User clicked the Stop button
+                if (currentAbortController) {
+                    currentAbortController.abort();
+                }
+                return;
+            }
+
             const queryText = inputField.value.trim();
-            if (!queryText || isSubmitting) return;
+            if (!queryText) return;
             isSubmitting = true;
 
             if (currentAbortController) {
@@ -981,8 +997,14 @@
             inputField.value = "";
             inputField.style.height = 'auto';
             inputField.disabled = true;
-            sendBtn.disabled = true;
-            sendBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`;
+            inputField.placeholder = "Generating response...";
+            
+            sendBtn.disabled = false; // keep active to click stop
+            sendBtn.className = "absolute right-2 bottom-2 px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer flex items-center space-x-2";
+            sendBtn.innerHTML = `
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-500 group-hover:text-white"></i>
+                <i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i>
+            `;
             lucide.createIcons();
 
             if (activeEditingMessageId) {
@@ -1084,6 +1106,8 @@
                 currentLoadId = null;
 
                 if (error.name === 'AbortError') {
+                    // Aborted by user clicking Stop
+                    finalizeMessageUI(botMessageContainer);
                     return;
                 }
                 appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running on the configured port.");
@@ -1091,7 +1115,9 @@
                 currentAbortController = null;
                 isSubmitting = false;
                 inputField.disabled = false;
+                inputField.placeholder = "Query structural timelines, metrics, policies... (Shift+Enter for new line)";
                 sendBtn.disabled = false;
+                sendBtn.className = "absolute right-2 bottom-2 p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
                 sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i>`;
                 lucide.createIcons();
                 inputField.focus();
