@@ -1039,6 +1039,8 @@
             }, 1000);
 
             const kDepth = parseInt(document.getElementById("param-k").value) || 3;
+            let botMessageContainer = null;
+            let bubbleTimerId = null;
 
             try {
                 const response = await fetch(`${BASE_BACKEND_URL}/api/chat`, {
@@ -1064,7 +1066,15 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
                 let buffer = "";
-                let botMessageContainer = createEmptyBotMessageElement();
+                botMessageContainer = createEmptyBotMessageElement();
+
+                // Start the internal bubble timer
+                let bubbleTimerVal = 0;
+                bubbleTimerId = setInterval(() => {
+                    bubbleTimerVal += 0.1;
+                    const timerSpan = document.getElementById(`timer-${botMessageContainer.id}`);
+                    if (timerSpan) timerSpan.innerText = `${bubbleTimerVal.toFixed(1)}s`;
+                }, 100);
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -1107,11 +1117,12 @@
 
                 if (error.name === 'AbortError') {
                     // Aborted by user clicking Stop
-                    finalizeMessageUI(botMessageContainer);
+                    if (botMessageContainer) finalizeMessageUI(botMessageContainer);
                     return;
                 }
                 appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running on the configured port.");
             } finally {
+                if (bubbleTimerId) clearInterval(bubbleTimerId);
                 currentAbortController = null;
                 isSubmitting = false;
                 inputField.disabled = false;
@@ -1136,7 +1147,15 @@
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
                 </div>
                 <div class="bg-slate-900/60 border border-slate-700/50 rounded-2xl rounded-tl-sm p-5 pb-4 text-sm text-slate-200 max-w-[85%] w-full shadow-md backdrop-blur-sm relative group/sys">
-                    <div class="prose prose-invert prose-emerald max-w-none text-sm pr-6 message-content-box"></div>
+                    <div class="prose prose-invert prose-emerald max-w-none text-sm pr-6 message-content-box">
+                        <div class="flex items-center space-x-2 text-rose-400/90 font-mono text-xs px-2 py-1 bg-rose-500/10 border border-rose-500/20 rounded-md w-fit generation-indicator">
+                            <span class="relative flex h-2.5 w-2.5">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                            </span>
+                            <span id="timer-${chunk.id}">0.0s</span>
+                        </div>
+                    </div>
                     <div class="citations-box mt-5 pt-4 border-t border-slate-800/60 hidden">
                         <p class="text-[9px] font-bold tracking-widest text-slate-500 uppercase mb-3 flex items-center"><i data-lucide="file-text" class="w-3 h-3 mr-1.5"></i> Source Metadata</p>
                         <div class="flex flex-wrap gap-2 citations-list"></div>
@@ -1168,6 +1187,12 @@
                         <span class="text-slate-300 font-medium truncate max-w-[150px]">${escapeHtml(cleanFile)}</span>
                         <span class="w-1 h-1 rounded-full bg-slate-700"></span>
                         <span class="text-slate-500">Pg ${c.page || '-'}</span>
+                        <span class="w-1 h-1 rounded-full bg-slate-700"></span>
+                        <span class="text-emerald-400/90 font-semibold">${(c.score * 100).toFixed(0)}%</span>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 opacity-0 group-hover/cit:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl shadow-black/50">
+                            <span class="block text-[10px] font-semibold text-emerald-400 mb-2 border-b border-slate-700 pb-1.5 uppercase tracking-wider">Confidence: ${(c.score * 100).toFixed(1)}%</span>
+                            <p class="text-xs italic leading-relaxed text-slate-400 line-clamp-4">"${previewText}"</p>
+                        </div>
                     </div>`;
             });
             citationsList.innerHTML = html;
@@ -1176,6 +1201,10 @@
 
         function appendTokenToMessageUI(container, token) {
             const contentBox = container.querySelector(".message-content-box");
+            const indicator = contentBox.querySelector(".generation-indicator");
+            if (indicator) {
+                indicator.remove();
+            }
             if (!container.dataset.rawMessage) container.dataset.rawMessage = "";
             container.dataset.rawMessage += token;
             
