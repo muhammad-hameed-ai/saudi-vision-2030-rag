@@ -1,10 +1,17 @@
+# --- CPU-only PyTorch (prevents ~2GB CUDA download on Render) ---
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+# --- Core Server ---
 fastapi
-uvicorn
-qdrant-client
-requests
-langchain-community
-langchain-huggingface
-python-dotenv
+uvicorn[standard]
 pydantic
-groq
+python-dotenv
+# --- Vector DB & Retrieval ---
+qdrant-client
 fastembed
+langchain-huggingface
+langchain-community
+# --- Reranker (CrossEncoder) ---
+sentence-transformers
+# --- Cloud LLM ---
+groq

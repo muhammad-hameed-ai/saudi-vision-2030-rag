@@ -16,3 +16,4 @@ qdrant_data/
 *.log
 .venv/
 venv/
+app.py

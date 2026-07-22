@@ -2,7 +2,23 @@
 Cross-Encoder Reranker: takes the top-k retrieved chunks from hybrid search
 and re-scores them using a cross-encoder model to produce a tighter, more
 relevant top-n for the LLM context window.
+
+Optimized for low-RAM environments (Render Free Tier / 512MB):
+  - Disables gradient computation globally
+  - Suppresses ONNX runtime warnings
 """
+
+import os
+import warnings
+from typing import List
+
+# Suppress noisy ONNX/tokenizer warnings before any model imports
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+import torch
+torch.set_grad_enabled(False)
 
 from sentence_transformers import CrossEncoder
 from src.retriever import RetrievedChunk
@@ -22,28 +38,20 @@ class Reranker:
 
     def _get_model(self) -> CrossEncoder:
         if self._model is None:
-            print(f"Loading reranker model: {self.model_name}")
+            print(f"[Reranker] Loading model: {self.model_name}")
             self._model = CrossEncoder(self.model_name)
-            print("Reranker model loaded.")
+            print("[Reranker] Model loaded successfully.")
         return self._model
 
     def rerank(
         self,
         query: str,
-        chunks: list[RetrievedChunk],
+        chunks: List[RetrievedChunk],
         top_k: int = 5,
-    ) -> list[RetrievedChunk]:
+    ) -> List[RetrievedChunk]:
         """
         Re-score chunks using the cross-encoder and return the top-k
         most relevant ones, sorted by reranker score (descending).
-
-        Args:
-            query: The user's original question.
-            chunks: List of RetrievedChunk from hybrid search.
-            top_k: Number of chunks to return after reranking.
-
-        Returns:
-            List of top_k RetrievedChunk objects with updated scores.
         """
         if not chunks:
             return []
@@ -53,8 +61,9 @@ class Reranker:
         # Build (query, document) pairs for cross-encoder scoring
         pairs = [(query, chunk.content) for chunk in chunks]
 
-        # Get relevance scores from the cross-encoder
-        scores = model.predict(pairs)
+        # Get relevance scores inside no_grad context for RAM savings
+        with torch.no_grad():
+            scores = model.predict(pairs)
 
         # Attach reranker scores and sort descending
         scored_chunks = list(zip(chunks, scores))

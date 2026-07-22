@@ -1,11 +1,18 @@
+"""
+Session Memory Manager — Cloud Edition
+
+Stores conversation history in SQLite and optionally summarizes long
+sessions via Groq Cloud API (no local Ollama dependency).
+"""
+
 import os
 import sqlite3
 import asyncio
 import json
-import ollama
 from datetime import datetime, timezone
 
 DB_PATH = "data/sessions.db"
+
 
 def init_db():
     """Initializes the SQLite database and creates the messages table."""
@@ -25,6 +32,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def save_message(session_id: str, role: str, content: str):
     """Saves a message to the SQLite database."""
     init_db()
@@ -38,12 +46,13 @@ def save_message(session_id: str, role: str, content: str):
     conn.commit()
     conn.close()
 
-def get_session_history(session_id: str, limit: int = 4) -> list:
+
+def get_session_history(session_id: str, limit: int = 4) -> dict:
     """Retrieves the last N messages for a session, plus any existing summary."""
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
+
     # Check for the latest summary if any exists
     cursor.execute(
         "SELECT summary FROM messages WHERE session_id = ? AND summary IS NOT NULL ORDER BY id DESC LIMIT 1",
@@ -64,16 +73,25 @@ def get_session_history(session_id: str, limit: int = 4) -> list:
     messages = [{"role": r, "content": c} for r, c in reversed(rows)]
     return {"summary": summary, "messages": messages}
 
+
 async def summarize_history(session_id: str):
-    """Summarizes history if session has more than 8 messages, saving summary to the DB."""
+    """
+    Summarizes history if session has more than 8 messages.
+    Uses Groq Cloud API instead of local Ollama.
+    Silently skips if Groq is unavailable (non-critical feature).
+    """
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return
+
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
+
     # Count total messages in this session
     cursor.execute("SELECT COUNT(*) FROM messages WHERE session_id = ?", (session_id,))
     count = cursor.fetchone()[0]
-    
+
     if count <= 8:
         conn.close()
         return
@@ -81,41 +99,44 @@ async def summarize_history(session_id: str):
     # Fetch all messages to build a comprehensive summary
     cursor.execute("SELECT role, content FROM messages WHERE session_id = ? ORDER BY id ASC", (session_id,))
     rows = cursor.fetchall()
-    
+
     history_text = "\n".join([f"{role.upper()}: {content}" for role, content in rows])
-    
+
     prompt = (
         "Summarize the following conversation history briefly and concisely, focusing "
         "only on key topics discussed. Keep the summary under 150 words.\n\n"
         f"Conversation:\n{history_text}"
     )
-    
+
     try:
-        client = ollama.AsyncClient(host="http://localhost:11434")
-        response = await client.chat(
-            model="llama3.2:1b",
+        from groq import AsyncGroq
+        client = AsyncGroq(api_key=api_key, timeout=15.0)
+        response = await client.chat.completions.create(
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
-            options={"num_predict": 200, "temperature": 0.3}
+            max_tokens=200,
+            temperature=0.3,
         )
-        summary_text = response["message"]["content"].strip()
-        
+        summary_text = response.choices[0].message.content.strip()
+
         # Save summary to the most recent message row
         cursor.execute(
             "SELECT id FROM messages WHERE session_id = ? ORDER BY id DESC LIMIT 1",
             (session_id,)
         )
         latest_id = cursor.fetchone()[0]
-        
+
         cursor.execute(
             "UPDATE messages SET summary = ? WHERE id = ?",
             (summary_text, latest_id)
         )
         conn.commit()
-        print(f"[Memory] Successfully summarized history for session {session_id}.")
+        print(f"[Memory] Summarized session {session_id} ({len(summary_text)} chars)")
     except Exception as e:
-        print(f"[Memory] Failed to summarize history: {e}")
+        print(f"[Memory] Summary skipped (non-critical): {e}")
     finally:
         conn.close()
+
 
 def clear_session(session_id: str):
     """Deletes all messages for a session."""
@@ -125,36 +146,3 @@ def clear_session(session_id: str):
     cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
     conn.commit()
     conn.close()
-
-async def test_memory():
-    session_id = "test_session_123"
-    clear_session(session_id)
-    
-    print("Testing saving messages...")
-    save_message(session_id, "user", "Hello, I am asking about Saudi Vision 2030.")
-    save_message(session_id, "assistant", "I am an analyst for Saudi Vision 2030. How can I help?")
-    save_message(session_id, "user", "What are the goals of the green initiative?")
-    save_message(session_id, "assistant", "To plant 10 billion trees and reduce emissions.")
-    
-    history = get_session_history(session_id, limit=2)
-    print("\nSession history retrieved (limit 2):")
-    print(json.dumps(history, indent=2))
-    
-    # Save more messages to trigger a summary run
-    print("\nAdding more messages to trigger summary mechanism...")
-    save_message(session_id, "user", "Who manages the PIF?")
-    save_message(session_id, "assistant", "The Public Investment Fund is chaired by the Crown Prince.")
-    save_message(session_id, "user", "What is the 2030 asset target?")
-    save_message(session_id, "assistant", "The target was revised up to 2.67 trillion dollars.")
-    save_message(session_id, "user", "Tell me about tourism targets.")
-    save_message(session_id, "assistant", "The kingdom aims to attract 150 million visitors annually by 2030.")
-    
-    print("\nRunning summary process...")
-    await summarize_history(session_id)
-    
-    history_after = get_session_history(session_id, limit=2)
-    print("\nSession history retrieved after summary:")
-    print(json.dumps(history_after, indent=2))
-
-if __name__ == "__main__":
-    asyncio.run(test_memory())
