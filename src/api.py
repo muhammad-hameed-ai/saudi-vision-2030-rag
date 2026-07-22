@@ -326,7 +326,6 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # API Routes
 # ---------------------------------------------------------------------------
-@app.post("/api/chat")
 async def generate_rag_stream(request: ChatRequest):
     """Async generator to stream RAG tokens and metadata via SSE."""
     query = request.question
