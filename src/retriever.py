@@ -63,6 +63,24 @@ class HybridRetriever:
                     api_key=self.qdrant_api_key,
                     timeout=60.0
                 )
+                
+                # Zero-Touch Programmatic Payload Indexing
+                try:
+                    self._client.create_payload_index(
+                        collection_name=self.COLLECTION_NAME,
+                        field_name="metadata.section",
+                        field_schema=models.PayloadSchemaType.KEYWORD,
+                    )
+                    self._client.create_payload_index(
+                        collection_name=self.COLLECTION_NAME,
+                        field_name="metadata.source",
+                        field_schema=models.PayloadSchemaType.TEXT,
+                    )
+                    logger.info(f"[Retriever] Payload indexes verified/created for {self.COLLECTION_NAME}")
+                except Exception as e:
+                    # Safely handle case if index already exists or user lacks permissions
+                    logger.info(f"[Retriever] Payload index setup note (safe to ignore if already exists): {e}")
+
             except Exception as e:
                 logger.error(f"[Retriever] Failed to bind to Qdrant cluster:\n{traceback.format_exc()}")
                 raise QdrantUnavailableError(f"Cannot bind socket to Qdrant cluster host: {e}")
@@ -132,46 +150,79 @@ class HybridRetriever:
             )
 
             # 3. Parallel dual-query prefetch step mapped to unified RRF compiler
-            results = client.query_points(
-                collection_name=self.COLLECTION_NAME,
-                prefetch=[
-                    # 1. Primary Dense Query (Semantic matches)
-                    models.Prefetch(
-                        query=dense_vector,
-                        using=self.DENSE_VECTOR_NAME,
-                        limit=k,
-                    ),
-                    # 2. Primary Sparse Query (Exact keyword matches)
-                    models.Prefetch(
-                        query=sparse_vector,
-                        using=self.SPARSE_VECTOR_NAME,
-                        limit=k,
-                    ),
-                    # 3. Policy Overview Booster: 
-                    # Over-indexes on broad query terms against general documents to counteract 
-                    # financial circular term-frequency dominance.
-                    models.Prefetch(
-                        query=dense_vector,
-                        using=self.DENSE_VECTOR_NAME,
-                        filter=models.Filter(
-                            should=[
-                                models.FieldCondition(
-                                    key="metadata.section",
-                                    match=models.MatchValue(value="General"),
-                                ),
-                                models.FieldCondition(
-                                    key="metadata.source",
-                                    match=models.MatchText(text="vision2030"),
-                                ),
-                            ]
+            try:
+                results = client.query_points(
+                    collection_name=self.COLLECTION_NAME,
+                    prefetch=[
+                        # 1. Primary Dense Query (Semantic matches)
+                        models.Prefetch(
+                            query=dense_vector,
+                            using=self.DENSE_VECTOR_NAME,
+                            limit=k,
                         ),
-                        limit=max(1, k // 2),
-                    ),
-                ],
-                query=models.FusionQuery(fusion=models.Fusion.RRF),
-                limit=k,
-                with_payload=True,
-            )
+                        # 2. Primary Sparse Query (Exact keyword matches)
+                        models.Prefetch(
+                            query=sparse_vector,
+                            using=self.SPARSE_VECTOR_NAME,
+                            limit=k,
+                        ),
+                        # 3. Policy Overview Booster: 
+                        # Over-indexes on broad query terms against general documents to counteract 
+                        # financial circular term-frequency dominance.
+                        models.Prefetch(
+                            query=dense_vector,
+                            using=self.DENSE_VECTOR_NAME,
+                            filter=models.Filter(
+                                should=[
+                                    models.FieldCondition(
+                                        key="metadata.section",
+                                        match=models.MatchValue(value="General"),
+                                    ),
+                                    models.FieldCondition(
+                                        key="metadata.source",
+                                        match=models.MatchText(text="vision2030"),
+                                    ),
+                                ]
+                            ),
+                            limit=max(1, k // 2),
+                        ),
+                    ],
+                    query=models.FusionQuery(fusion=models.Fusion.RRF),
+                    limit=k,
+                    with_payload=True,
+                )
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 400:
+                    logger.warning("[Retriever] Qdrant 400 Bad Request on booster filter (Missing Index). Falling back to pure Dense/Sparse.")
+                    # Safe Fallback: Execute without the booster prefetch
+                    results = client.query_points(
+                        collection_name=self.COLLECTION_NAME,
+                        prefetch=[
+                            models.Prefetch(query=dense_vector, using=self.DENSE_VECTOR_NAME, limit=k),
+                            models.Prefetch(query=sparse_vector, using=self.SPARSE_VECTOR_NAME, limit=k),
+                        ],
+                        query=models.FusionQuery(fusion=models.Fusion.RRF),
+                        limit=k,
+                        with_payload=True,
+                    )
+                else:
+                    raise
+            except Exception as e:
+                # To catch qdrant_client.http.exceptions.UnexpectedResponse specifically if raised instead of HTTPStatusError
+                if "400" in str(e) or "Index required" in str(e):
+                    logger.warning(f"[Retriever] Qdrant 400 Error (Likely missing index): {e}. Falling back to pure Dense/Sparse.")
+                    results = client.query_points(
+                        collection_name=self.COLLECTION_NAME,
+                        prefetch=[
+                            models.Prefetch(query=dense_vector, using=self.DENSE_VECTOR_NAME, limit=k),
+                            models.Prefetch(query=sparse_vector, using=self.SPARSE_VECTOR_NAME, limit=k),
+                        ],
+                        query=models.FusionQuery(fusion=models.Fusion.RRF),
+                        limit=k,
+                        with_payload=True,
+                    )
+                else:
+                    raise
 
             chunks = []
             for point in results.points:
