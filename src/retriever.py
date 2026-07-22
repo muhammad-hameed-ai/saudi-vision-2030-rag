@@ -6,6 +6,7 @@ Universal Query API and Reciprocal Rank Fusion (RRF).
 import os
 import logging
 import traceback
+import httpx
 from dataclasses import dataclass, field
 from typing import List, Optional
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
@@ -85,12 +86,16 @@ class HybridRetriever:
         return self._sparse_model
 
     def health_check(self) -> bool:
-        """Verifies operational status of the upstream vector network pipeline."""
+        """Verifies operational status of the upstream vector network pipeline without blocking/crashing."""
         try:
             client = self._get_client()
             info = client.get_collection(self.COLLECTION_NAME)
             return info.points_count > 0
-        except Exception:
+        except (httpx.ConnectError, ConnectionError, TimeoutError, OSError) as e:
+            logger.warning(f"[Retriever] Health check network timeout/failure: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"[Retriever] Health check unexpected failure: {e}")
             return False
 
     def get_collection_info(self) -> dict:
@@ -160,9 +165,9 @@ class HybridRetriever:
                 ))
             return chunks
 
-        except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error(f"[Retriever] Network error communicating with Qdrant:\n{traceback.format_exc()}")
-            raise QdrantUnavailableError(f"Network error communicating with Qdrant: {e}")
+        except (httpx.ConnectError, ConnectionError, TimeoutError, OSError) as e:
+            logger.error(f"[Retriever] Network error communicating with Qdrant Cloud:\n{traceback.format_exc()}")
+            raise QdrantUnavailableError(f"Network error communicating with Qdrant Cloud: {e}")
         except Exception as e:
             logger.error(f"[Retriever] Unexpected pipeline break inside retriever block:\n{traceback.format_exc()}")
             raise RuntimeError(f"Unexpected pipeline trace break inside retriever block: {e}")
