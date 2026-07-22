@@ -13,6 +13,8 @@ import json
 import uuid
 import time
 import math
+import logging
+import traceback
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -32,8 +34,11 @@ from src.hyde_retriever import generate_hypothesis
 from src.memory import save_message, get_session_history, summarize_history
 
 # ---------------------------------------------------------------------------
-# Environment & Path Configuration
+# Logging & Environment Setup
 # ---------------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("vision2030.api")
+
 os.environ["USE_HYDE"] = os.getenv("USE_HYDE", "true")
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -60,7 +65,7 @@ def get_retriever() -> HybridRetriever:
     """Lazy initializer for HybridRetriever to prevent blocking Uvicorn startup."""
     global _retriever_instance
     if _retriever_instance is None:
-        print("[INIT] Lazy loading HybridRetriever models (FastEmbed + Qdrant)...")
+        logger.info("[INIT] Lazy loading HybridRetriever models (FastEmbed + Qdrant)...")
         _retriever_instance = HybridRetriever()
     return _retriever_instance
 
@@ -68,10 +73,20 @@ def get_reranker() -> Reranker:
     """Lazy initializer for Reranker model."""
     global _reranker_instance
     if _reranker_instance is None:
-        print("[INIT] Lazy loading Cross-Encoder Reranker model...")
+        logger.info("[INIT] Lazy loading Cross-Encoder Reranker model...")
         _reranker_instance = Reranker()
     return _reranker_instance
 
+def get_groq_client() -> AsyncGroq:
+    """Validates API key and returns initialized AsyncGroq client."""
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        logger.error("GROQ_API_KEY environment variable is not configured.")
+        raise HTTPException(
+            status_code=500, 
+            detail="GROQ_API_KEY environment variable is missing on server environment."
+        )
+    return AsyncGroq(api_key=api_key, timeout=30.0)
 
 startup_time: Optional[str] = None
 request_count: int = 0
@@ -82,7 +97,7 @@ SYSTEM_STATS = {
     "latency_history": [],
 }
 
-# Pipeline Consts
+# Pipeline Constants
 RETRIEVAL_K = 10        # Hybrid engine candidate pooling size
 RERANK_TOP_K = 5        # Compressed context size passed to LLM
 HEALTH_CHECK_TTL = 5.0  
@@ -115,6 +130,9 @@ CONTEXT (your ONLY source of truth):
 {context}"""
 
 
+# ---------------------------------------------------------------------------
+# Utility Methods
+# ---------------------------------------------------------------------------
 def optimize_search_query(user_query: str) -> str:
     """Normalizes typos and expands keywords standard to Saudi Vision 2030 docs."""
     query = user_query.lower().strip()
@@ -143,6 +161,20 @@ def optimize_search_query(user_query: str) -> str:
 
     return query
 
+def _clean_source_path(raw_path: Optional[str]) -> str:
+    """Null-safe source path formatter."""
+    if not raw_path:
+        return "Saudi Vision 2030 Policy Document"
+    return str(raw_path).replace("data\\raw_pdfs\\", "").replace("data/raw_pdfs/", "")
+
+def _sigmoid(x: float) -> float:
+    """Safe sigmoid calculation for reranker normalization."""
+    try:
+        bounded = max(min(float(x), 50.0), -50.0)
+        return 1.0 / (1.0 + math.exp(-bounded))
+    except Exception:
+        return 0.5
+
 
 # ---------------------------------------------------------------------------
 # Lifespan Hook (Non-blocking Fast Startup)
@@ -159,19 +191,19 @@ async def warmup_llm():
                 messages=[{"role": "user", "content": "ping"}],
                 max_tokens=2
             )
-            print("[INIT] Groq cloud inference engine reachable.")
+            logger.info("[INIT] Groq cloud inference engine reachable.")
     except Exception as e:
-        print(f"[WARN] Non-fatal: Groq warmup ping skipped/failed: {e}")
+        logger.warning(f"[WARN] Non-fatal: Groq warmup ping skipped/failed: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Fast non-blocking startup lifecycle."""
     global startup_time
     startup_time = datetime.now(timezone.utc).isoformat()
-    print("[INIT] FastAPI engine active. Port listening ready.")
+    logger.info("[INIT] FastAPI engine active. Port listening ready.")
     asyncio.create_task(warmup_llm())
     yield
-    print("[SHUTDOWN] Terminating server context loops.")
+    logger.info("[SHUTDOWN] Terminating server context loops.")
 
 
 # ---------------------------------------------------------------------------
@@ -202,10 +234,11 @@ def _require_qdrant():
     if _cached_health["healthy"] and (now - _cached_health["checked_at"] < HEALTH_CHECK_TTL):
         return
     
-    retriever_obj = get_retriever()
     try:
+        retriever_obj = get_retriever()
         is_healthy = retriever_obj.health_check()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"[HEALTH CHECK FAILED] Vector check exception: {e}")
         is_healthy = False
 
     _cached_health["healthy"] = is_healthy
@@ -214,20 +247,21 @@ def _require_qdrant():
     if not is_healthy:
         raise HTTPException(
             status_code=503,
-            detail="Upstream vector infrastructure is down. Service temporarily degraded.",
+            detail="Upstream vector infrastructure is down or degraded. Please retry shortly.",
         )
 
-def _clean_source_path(raw_path: str) -> str:
-    return raw_path.replace("data\\raw_pdfs\\", "").replace("data/raw_pdfs/", "")
-
 async def _build_memory_string(session_id: str) -> str:
-    memory_context = await asyncio.to_thread(get_session_history, session_id, 4)
-    memory_str = ""
-    if memory_context.get("summary"):
-        memory_str += f"Summary of past conversation: {memory_context['summary']}\n"
-    for m in memory_context.get("messages", []):
-        memory_str += f"{m['role'].upper()}: {m['content']}\n"
-    return memory_str
+    try:
+        memory_context = await asyncio.to_thread(get_session_history, session_id, 4)
+        memory_str = ""
+        if memory_context.get("summary"):
+            memory_str += f"Summary of past conversation: {memory_context['summary']}\n"
+        for m in memory_context.get("messages", []):
+            memory_str += f"{m['role'].upper()}: {m['content']}\n"
+        return memory_str
+    except Exception as e:
+        logger.warning(f"Failed to build session memory for {session_id}: {e}")
+        return ""
 
 
 # ---------------------------------------------------------------------------
@@ -278,32 +312,32 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 @app.post("/api/chat")
 async def process_rag_chat(request: ChatRequest):
-    """Main interactive chat endpoint."""
-    _require_qdrant()
+    """Main interactive chat endpoint with full exception diagnostic logging."""
     start_time = time.time()
-    top_k = request.k
-
-    retriever_obj = get_retriever()
-    reranker_obj = get_reranker()
-
+    
     try:
+        _require_qdrant()
+        top_k = request.k
+
+        retriever_obj = get_retriever()
+        reranker_obj = get_reranker()
+
         optimized_query = optimize_search_query(request.question)
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
-        search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
+        
+        if use_hyde:
+            search_query = await generate_hypothesis(optimized_query)
+        else:
+            search_query = optimized_query
         
         candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
         reranked = await asyncio.to_thread(reranker_obj.rerank, request.question, candidates, top_k=top_k)
-    except QdrantUnavailableError:
-        raise HTTPException(status_code=503, detail="Vector search engine timed out.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal retrieval failure: {str(e)}")
 
-    memory_str = await _build_memory_string(request.session_id)
-    context = "\n\n".join([c.content for c in reranked])
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context)
+        memory_str = await _build_memory_string(request.session_id)
+        context = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context)
 
-    try:
-        client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"), timeout=30.0)
+        client = get_groq_client()
         response = await client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
@@ -316,86 +350,106 @@ async def process_rag_chat(request: ChatRequest):
         )
         ai_answer = response.choices[0].message.content.strip()
         
-        await asyncio.to_thread(save_message, request.session_id, "user", request.question)
-        await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
-        asyncio.create_task(summarize_history(request.session_id))
+        try:
+            await asyncio.to_thread(save_message, request.session_id, "user", request.question)
+            await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
+            asyncio.create_task(summarize_history(request.session_id))
+        except Exception as mem_err:
+            logger.warning(f"Session history save skipped: {mem_err}")
+
+        elapsed_time = time.time() - start_time
+        elapsed_ms = round(elapsed_time * 1000, 2)
         
+        SYSTEM_STATS["queries_served_this_session"] += 1
+        SYSTEM_STATS["latency_history"].append(elapsed_time)
+        if len(SYSTEM_STATS["latency_history"]) > MAX_LATENCY_HISTORY:
+            SYSTEM_STATS["latency_history"].pop(0)
+
+        source_citations = []
+        for chunk in reranked:
+            raw_score = getattr(chunk, 'score', 0.0)
+            source_citations.append({
+                "file": _clean_source_path(getattr(chunk, 'source', None)),
+                "page": getattr(chunk, 'page', 1),
+                "section": getattr(chunk, 'section', 'General'),
+                "score": round(_sigmoid(raw_score), 4),
+            })
+
+        await asyncio.to_thread(
+            log_rag_query,
+            query=request.question,
+            sources=source_citations,
+            reranker_scores=[getattr(c, 'score', 0.0) for c in reranked],
+            answer=ai_answer,
+            latency_ms=elapsed_ms,
+            retrieval_k=len(candidates),
+            reranked_k=len(reranked),
+        )
+
+        return {
+            "session_id": request.session_id,
+            "answer": ai_answer,
+            "citations": source_citations,
+            "metrics": {
+                "latency_seconds": round(elapsed_time, 3),
+                "retrieval_depth_k": RETRIEVAL_K,
+                "reranked_k": len(reranked),
+            },
+        }
+
+    except QdrantUnavailableError as e:
+        logger.error(f"[503] Qdrant Engine Error: {e}")
+        raise HTTPException(status_code=503, detail="Vector search engine timed out or unavailable.")
+    
     except APIError as e:
+        logger.error(f"[503] Groq Cloud API Error: {e}")
         return JSONResponse(
             status_code=503,
             content={"error": f"Groq cloud endpoints unreachable: {str(e)}"}
         )
-    except Exception as e:
-        raise HTTPException(status_code=504, detail=f"LLM generation failed: {str(e)[:150]}")
-
-    elapsed_time = time.time() - start_time
-    elapsed_ms = round(elapsed_time * 1000, 2)
     
-    SYSTEM_STATS["queries_served_this_session"] += 1
-    SYSTEM_STATS["latency_history"].append(elapsed_time)
-    if len(SYSTEM_STATS["latency_history"]) > MAX_LATENCY_HISTORY:
-        SYSTEM_STATS["latency_history"].pop(0)
-
-    source_citations = []
-    for chunk in reranked:
-        normalized_score = 1 / (1 + math.exp(-chunk.score))
-        source_citations.append({
-            "file": _clean_source_path(chunk.source),
-            "page": chunk.page,
-            "section": chunk.section,
-            "score": round(normalized_score, 4),
-        })
-
-    await asyncio.to_thread(
-        log_rag_query,
-        query=request.question,
-        sources=source_citations,
-        reranker_scores=[c.score for c in reranked],
-        answer=ai_answer,
-        latency_ms=elapsed_ms,
-        retrieval_k=len(candidates),
-        reranked_k=len(reranked),
-    )
-
-    return {
-        "session_id": request.session_id,
-        "answer": ai_answer,
-        "citations": source_citations,
-        "metrics": {
-            "latency_seconds": round(elapsed_time, 3),
-            "retrieval_depth_k": RETRIEVAL_K,
-            "reranked_k": len(reranked),
-        },
-    }
+    except HTTPException:
+        raise
+        
+    except Exception as e:
+        stack_trace = traceback.format_exc()
+        logger.error(f"=== UNHANDLED RAG PIPELINE EXCEPTION ===\n{stack_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": str(e),
+                "type": type(e).__name__,
+                "detail": "Internal processing error during retrieval, reranking, or completion."
+            }
+        )
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(request: ChatRequest):
     """Programmatic standard validation endpoint."""
     global request_count
-    _require_qdrant()
-
+    
     if len(request.question) > 500:
         raise HTTPException(status_code=422, detail="Query exceeds maximum allowed limit of 500 characters.")
 
     t0 = time.time()
-    retriever_obj = get_retriever()
-    reranker_obj = get_reranker()
 
     try:
+        _require_qdrant()
+        retriever_obj = get_retriever()
+        reranker_obj = get_reranker()
+
         optimized_query = optimize_search_query(request.question)
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
         search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
+        
         candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
         reranked = await asyncio.to_thread(reranker_obj.rerank, request.question, candidates, top_k=request.k)
-    except QdrantUnavailableError:
-        raise HTTPException(status_code=503, detail="Remote vector store unavailable.")
 
-    memory_str = await _build_memory_string(request.session_id)
-    context_text = "\n\n".join([c.content for c in reranked])
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context_text)
+        memory_str = await _build_memory_string(request.session_id)
+        context_text = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context_text)
 
-    try:
-        client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"), timeout=30.0)
+        client = get_groq_client()
         response = await client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
@@ -407,48 +461,58 @@ async def ask(request: ChatRequest):
             top_p=1.0,
         )
         ai_answer = response.choices[0].message.content.strip()
-        await asyncio.to_thread(save_message, request.session_id, "user", request.question)
-        await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
-        asyncio.create_task(summarize_history(request.session_id))
+
+        try:
+            await asyncio.to_thread(save_message, request.session_id, "user", request.question)
+            await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
+            asyncio.create_task(summarize_history(request.session_id))
+        except Exception as mem_err:
+            logger.warning(f"Session history save skipped: {mem_err}")
+
+        latency_ms = round((time.time() - t0) * 1000, 2)
+        request_count += 1
+
+        sources = []
+        for c in reranked:
+            raw_score = getattr(c, 'score', 0.0)
+            sources.append(SourceDoc(
+                source=_clean_source_path(getattr(c, 'source', None)),
+                page=getattr(c, 'page', 1),
+                section=getattr(c, 'section', 'General'),
+                preview=getattr(c, 'content', '')[:150].strip(),
+                score=round(_sigmoid(raw_score), 4)
+            ))
+
+        await asyncio.to_thread(
+            log_rag_query,
+            query=request.question,
+            sources=[s.model_dump() for s in sources],
+            reranker_scores=[getattr(c, 'score', 0.0) for c in reranked],
+            answer=ai_answer,
+            latency_ms=latency_ms,
+            retrieval_k=len(candidates),
+            reranked_k=len(reranked),
+        )
+
+        return AskResponse(
+            session_id=request.session_id,
+            question=request.question,
+            answer=ai_answer,
+            sources=sources,
+            retrieval_chunks=len(candidates),
+            reranked_chunks=len(reranked),
+            latency_ms=latency_ms,
+            model=GROQ_MODEL,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+    except QdrantUnavailableError:
+        raise HTTPException(status_code=503, detail="Remote vector store unavailable.")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=504, detail=f"LLM compilation failed: {str(e)}")
-
-    latency_ms = round((time.time() - t0) * 1000, 2)
-    request_count += 1
-
-    sources = []
-    for c in reranked:
-        normalized_score = 1 / (1 + math.exp(-c.score))
-        sources.append(SourceDoc(
-            source=_clean_source_path(c.source),
-            page=c.page,
-            section=c.section,
-            preview=c.content[:150].strip(),
-            score=round(normalized_score, 4)
-        ))
-
-    await asyncio.to_thread(
-        log_rag_query,
-        query=request.question,
-        sources=[s.model_dump() for s in sources],
-        reranker_scores=[c.score for c in reranked],
-        answer=ai_answer,
-        latency_ms=latency_ms,
-        retrieval_k=len(candidates),
-        reranked_k=len(reranked),
-    )
-
-    return AskResponse(
-        session_id=request.session_id,
-        question=request.question,
-        answer=ai_answer,
-        sources=sources,
-        retrieval_chunks=len(candidates),
-        reranked_chunks=len(reranked),
-        latency_ms=latency_ms,
-        model=GROQ_MODEL,
-        timestamp=datetime.now(timezone.utc).isoformat(),
-    )
+        logger.error(f"=== ASK ENDPOINT ERROR ===\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"LLM compilation or pipeline failure: {str(e)}")
 
 
 # ---------------------------------------------------------------------------
@@ -482,7 +546,8 @@ def get_pipeline_info():
     try:
         retriever_obj = get_retriever()
         coll_info = retriever_obj.get_collection_info()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Could not retrieve Qdrant collection info: {e}")
         coll_info = {"points_count": "Unknown (Database Disconnected)"}
 
     reranker_name = get_reranker().model_name if _reranker_instance else "Cross-Encoder (Lazy Loaded)"
@@ -491,7 +556,7 @@ def get_pipeline_info():
         "corpus_summary": {
             "documents": 48,
             "pages": 2184,
-            "chunks": coll_info.get("points_count", 0),
+            "chunks": coll_info.get("points_count", 0) if isinstance(coll_info, dict) else "Unknown",
             "dimensions": 384,
         },
         "configuration": {
