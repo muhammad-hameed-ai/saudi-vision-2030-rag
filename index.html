@@ -442,10 +442,79 @@
         let currentLoadId = null;
         let isSubmitting = false;
 
-        let activeSessionId = 'session-1';
-        let chatSessions = {
-            'session-1': { title: 'New Analysis', messages: [] }
-        };
+        class SessionManager {
+            constructor() {
+                this.storageKey = 'vision2030_sessions';
+                this.sessions = this.loadSessions();
+                if (this.sessions.length === 0) {
+                    this.createNewSession();
+                }
+                this.currentSessionId = this.sessions[0].id;
+            }
+
+            loadSessions() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    return data ? JSON.parse(data) : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            saveSessions() {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.sessions));
+                } catch (e) {
+                    console.error("Failed to save sessions:", e);
+                }
+            }
+
+            createNewSession() {
+                const newId = 'session-' + Date.now();
+                this.sessions.unshift({
+                    id: newId,
+                    title: 'New Analysis',
+                    timestamp: new Date().toISOString(),
+                    messages: []
+                });
+                this.currentSessionId = newId;
+                this.saveSessions();
+                return newId;
+            }
+
+            getSession(id) {
+                return this.sessions.find(s => s.id === id);
+            }
+
+            deleteSession(id) {
+                const deleted = this.getSession(id);
+                this.sessions = this.sessions.filter(s => s.id !== id);
+                if (this.currentSessionId === id) {
+                    this.currentSessionId = this.sessions.length > 0 ? this.sessions[0].id : this.createNewSession();
+                }
+                if (this.sessions.length === 0) this.createNewSession();
+                this.saveSessions();
+                return deleted;
+            }
+
+            addMessage(role, content, extra = {}) {
+                const session = this.getSession(this.currentSessionId);
+                if (session) {
+                    if (session.messages.length === 0 && role === 'user') {
+                        session.title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+                    }
+                    session.messages.push({
+                        id: 'msg-' + Date.now() + Math.random().toString(36).substring(7),
+                        role: role,
+                        content: content,
+                        ...extra
+                    });
+                    this.saveSessions();
+                }
+            }
+        }
+
+        const sessionManager = new SessionManager();
 
         let pulseChart, latencyChart, accuracyChart;
         let pulseData = Array(30).fill(0);
@@ -557,20 +626,14 @@
             const list = document.getElementById('session-list');
             list.innerHTML = '';
 
-            const sessionEntries = Object.entries(chatSessions).sort((a, b) => {
-                const tA = parseInt(a[0].split('-')[1]) || 0;
-                const tB = parseInt(b[0].split('-')[1]) || 0;
-                return tB - tA;
-            });
-
-            sessionEntries.forEach(([id, s]) => {
+            sessionManager.sessions.forEach((s) => {
                 const li = document.createElement('li');
-                const isActive = id === activeSessionId;
+                const isActive = s.id === sessionManager.currentSessionId;
                 li.className = `group flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer transition-colors ${isActive ? 'bg-slate-800 border-l-2 border-emerald-500' : 'hover:bg-slate-800/50 border-l-2 border-transparent'}`;
-                li.onclick = () => switchSession(id);
+                li.onclick = () => switchSession(s.id);
                 li.innerHTML = `
                     <span class="text-xs font-medium ${isActive ? 'text-slate-100' : 'text-slate-300 group-hover:text-slate-100'} truncate pr-2 flex items-center"><i data-lucide="message-square" class="inline w-3 h-3 mr-2 opacity-60 text-emerald-500"></i>${escapeHtml(s.title)}</span>
-                    <button onclick="deleteSession('${id}', event)" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-400 p-1 rounded hover:bg-rose-500/10 transition-all cursor-pointer">
+                    <button onclick="deleteSession('${s.id}', event)" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-400 p-1 rounded hover:bg-rose-500/10 transition-all cursor-pointer">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                     </button>
                 `;
@@ -581,35 +644,29 @@
 
         function deleteSession(id, event) {
             event.stopPropagation();
-            const deletedSession = chatSessions[id];
-            delete chatSessions[id];
-
-            const remainingIds = Object.keys(chatSessions);
-            if (remainingIds.length === 0) {
-                createNewSession();
-            } else if (activeSessionId === id) {
-                switchSession(remainingIds[0]);
-            } else {
-                renderSessions();
-            }
+            const deletedSession = sessionManager.deleteSession(id);
+            switchSession(sessionManager.currentSessionId);
 
             showToast('Session deleted', () => {
-                chatSessions[id] = deletedSession;
-                if (Object.keys(chatSessions).length === 1) switchSession(id);
-                renderSessions();
+                if (deletedSession) {
+                    sessionManager.sessions.unshift(deletedSession);
+                    sessionManager.saveSessions();
+                    if (sessionManager.sessions.length === 1) switchSession(id);
+                    else renderSessions();
+                }
             });
         }
 
         function createNewSession() {
-            const newId = 'session-' + Date.now();
-            chatSessions[newId] = { title: 'New Analysis', messages: [] };
-            switchSession(newId);
+            sessionManager.createNewSession();
+            switchSession(sessionManager.currentSessionId);
         }
 
         function switchSession(id) {
-            if (!chatSessions[id]) return;
-            activeSessionId = id;
-            isFirstQueryInSession = chatSessions[id].messages.length === 0;
+            const session = sessionManager.getSession(id);
+            if (!session) return;
+            sessionManager.currentSessionId = id;
+            isFirstQueryInSession = session.messages.length === 0;
             renderSessions();
 
             const thread = document.getElementById('chat-thread');
@@ -620,7 +677,7 @@
                 thread.insertAdjacentHTML('afterbegin', introCardHtml);
             }
 
-            chatSessions[id].messages.forEach(msg => {
+            session.messages.forEach(msg => {
                 if (msg.role === 'user') {
                     appendUserMessage(msg.content, msg.id, false);
                 } else {
@@ -714,13 +771,14 @@
             const raw = rawBlock ? rawBlock.dataset.rawMessage : "";
             const input = document.getElementById("user-input");
 
-            if (rawBlock && chatSessions[activeSessionId]) {
+            if (rawBlock && sessionManager.getSession(sessionManager.currentSessionId)) {
                 const msgId = rawBlock.id;
-                const messages = chatSessions[activeSessionId].messages;
-                const idx = messages.findIndex(m => m.id === msgId);
+                const session = sessionManager.getSession(sessionManager.currentSessionId);
+                const idx = session.messages.findIndex(m => m.id === msgId);
                 if (idx > -1) {
                     // Truncate session state to this message only
-                    chatSessions[activeSessionId].messages = messages.slice(0, idx);
+                    session.messages = session.messages.slice(0, idx);
+                    sessionManager.saveSessions();
                 }
 
                 // DOM truncation: remove this block and everything after it
@@ -1067,6 +1125,8 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
                 let buffer = "";
+                let currentSources = [];
+                let currentTelemetry = {};
                 botMessageContainer = createEmptyBotMessageElement();
 
                 // Start the internal bubble timer
@@ -1091,6 +1151,8 @@
 
                         const rawData = line.replace(/^data:\s*/, "");
                         if (rawData === "[DONE]") {
+                            sessionManager.addMessage('user', queryText);
+                            sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
                             finalizeMessageUI(botMessageContainer);
                             return;
                         }
@@ -1099,10 +1161,12 @@
                             const payload = JSON.parse(rawData);
 
                             if (payload.type === "metadata") {
+                                currentSources = payload.sources;
                                 renderCitationsUI(botMessageContainer, payload.sources, payload.cached);
                             } else if (payload.token) {
                                 appendTokenToMessageUI(botMessageContainer, payload.token);
                             } else if (payload.type === "telemetry") {
+                                currentTelemetry = payload;
                                 appendTelemetryFooter(botMessageContainer, payload);
                             } else if (payload.type === "error") {
                                 appendErrorBlock(payload.message);
@@ -1120,7 +1184,11 @@
 
                 if (error.name === 'AbortError') {
                     // Aborted by user clicking Stop
-                    if (botMessageContainer) finalizeMessageUI(botMessageContainer);
+                    if (botMessageContainer) {
+                        sessionManager.addMessage('user', queryText);
+                        sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
+                        finalizeMessageUI(botMessageContainer);
+                    }
                     return;
                 }
                 appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running on the configured port.");
@@ -1225,16 +1293,8 @@
         }
 
         function finalizeMessageUI(container) {
-            // Save to session history
-            if (chatSessions[activeSessionId]) {
-                chatSessions[activeSessionId].messages.push({
-                    id: container.id,
-                    role: 'system',
-                    content: container.dataset.rawMessage || "",
-                    citations: [],
-                    metrics: {}
-                });
-            }
+            // Rendering completion logic (if any) is handled here.
+            // State saving is now managed directly by submitQuery and SessionManager.
         }
 
         function appendUserMessage(msg, existingId = null, saveState = true) {
@@ -1245,13 +1305,7 @@
             chunk.dataset.rawMessage = msg;
             chunk.dataset.role = "user";
 
-            if (saveState && chatSessions[activeSessionId]) {
-                chatSessions[activeSessionId].messages.push({
-                    id: chunk.id,
-                    role: 'user',
-                    content: msg
-                });
-            }
+            // State is managed by SessionManager centrally.
 
             chunk.innerHTML = `
                 <div class="flex flex-col items-end max-w-[85%] group">
@@ -1303,15 +1357,7 @@
             chunk.dataset.rawMessage = data.answer;
             chunk.dataset.role = "system";
 
-            if (saveState && chatSessions[activeSessionId]) {
-                chatSessions[activeSessionId].messages.push({
-                    id: chunk.id,
-                    role: 'system',
-                    content: data.answer,
-                    citations: data.citations || [],
-                    metrics: data.metrics || {}
-                });
-            }
+            // State is managed by SessionManager centrally.
 
             const rawHtml = marked.parse(data.answer);
             const cleanHtml = DOMPurify.sanitize(rawHtml);
