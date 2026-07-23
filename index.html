@@ -1073,7 +1073,7 @@
                 bubbleTimerId = setInterval(() => {
                     bubbleTimerVal += 0.1;
                     const timerSpan = document.getElementById(`timer-${botMessageContainer.id}`);
-                    if (timerSpan) timerSpan.innerText = `${bubbleTimerVal.toFixed(1)}s`;
+                    if (timerSpan) timerSpan.innerText = `Generating response... ${bubbleTimerVal.toFixed(1)}s`;
                 }, 100);
 
                 while (true) {
@@ -1101,6 +1101,8 @@
                                 renderCitationsUI(botMessageContainer, payload.sources, payload.cached);
                             } else if (payload.token) {
                                 appendTokenToMessageUI(botMessageContainer, payload.token);
+                            } else if (payload.type === "telemetry") {
+                                appendTelemetryFooter(botMessageContainer, payload);
                             } else if (payload.type === "error") {
                                 appendErrorBlock(payload.message);
                             }
@@ -1153,7 +1155,7 @@
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                             </span>
-                            <span id="timer-${chunk.id}">0.0s</span>
+                            <span id="timer-${chunk.id}">Generating response... 0.0s</span>
                         </div>
                     </div>
                     <div class="citations-box mt-5 pt-4 border-t border-slate-800/60 hidden">
@@ -1361,6 +1363,23 @@
             thread.appendChild(chunk);
             lucide.createIcons();
             thread.scrollTop = thread.scrollHeight;
+        }
+
+        function appendTelemetryFooter(container, payload) {
+            const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+            const footer = document.createElement("div");
+            footer.className = "mt-5 pt-3 border-t border-gray-700 flex justify-between items-center text-gray-400";
+            footer.style.fontSize = "0.85rem";
+            footer.innerHTML = `
+                <div class="flex items-center space-x-4 w-full justify-between">
+                    <span>⏱️ ${payload.generation_time}s Generation</span>
+                    <span>|</span>
+                    <span>🔍 Depth: K=${payload.retrieval_k}</span>
+                    <span>|</span>
+                    <span>📅 ${timestamp}</span>
+                </div>
+            `;
+            container.querySelector(".bg-slate-900\\/60").appendChild(footer);
         }
 
         function appendErrorBlock(msg) {

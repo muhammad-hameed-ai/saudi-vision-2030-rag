@@ -328,6 +328,7 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 async def generate_rag_stream(request: ChatRequest):
     """Async generator to stream RAG tokens and metadata via SSE."""
+    start_time = time.time()
     query = request.question
     query_key = query.strip().lower()
 
@@ -335,6 +336,8 @@ async def generate_rag_stream(request: ChatRequest):
         cached = RAG_CACHE[query_key]
         yield f"data: {json.dumps({'type': 'metadata', 'sources': cached['sources'], 'cached': True})}\n\n"
         yield f"data: {json.dumps({'token': cached['response']})}\n\n"
+        elapsed = round(time.time() - start_time, 2)
+        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': request.k})}\n\n"
         yield "data: [DONE]\n\n"
         return
 
@@ -404,6 +407,8 @@ async def generate_rag_stream(request: ChatRequest):
         except Exception as mem_err:
             logger.warning(f"Session history save skipped: {mem_err}")
 
+        elapsed = round(time.time() - start_time, 2)
+        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': RETRIEVAL_K})}\n\n"
         yield "data: [DONE]\n\n"
 
     except Exception as e:
