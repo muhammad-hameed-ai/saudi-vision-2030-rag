@@ -384,14 +384,14 @@
                                         <p
                                             class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">
                                             Faithfulness Score</p>
-                                        <p class="text-2xl font-bold text-emerald-400 mono">94.2%</p>
+                                        <p id="stat-faithfulness" class="text-2xl font-bold text-emerald-400 mono">94.2%</p>
                                     </div>
                                     <div
                                         class="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-center md:text-left">
                                         <p
                                             class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">
                                             Context Relevance</p>
-                                        <p class="text-2xl font-bold text-teal-400 mono">89.5%</p>
+                                        <p id="stat-relevance" class="text-2xl font-bold text-teal-400 mono">89.5%</p>
                                     </div>
                                 </div>
                             </div>
@@ -549,6 +549,7 @@
                 }
             });
             if (targetTab === 'pipeline') refreshPipelineData();
+            if (targetTab === 'analytics') refreshAnalyticsDashboard();
         }
 
         // Session Management
