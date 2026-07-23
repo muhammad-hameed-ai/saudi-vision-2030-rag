@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, Any, List
 from collections import deque
 
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
@@ -569,18 +569,18 @@ def get_pipeline_info():
     coll_info = {}
     try:
         retriever_obj = get_retriever()
-        coll_info = retriever_obj.get_collection_info()
+        coll_info = retriever_obj.get_telemetry_stats()
     except Exception as e:
         logger.warning(f"Could not retrieve Qdrant collection info: {e}")
-        coll_info = {"points_count": "Unknown (Database Disconnected)"}
+        coll_info = {"points_count": "Unknown (Database Disconnected)", "unique_sources": 48}
 
     reranker_name = get_reranker().model_name if _reranker_instance else "Cross-Encoder (Lazy Loaded)"
 
     return {
         "corpus_summary": {
-            "documents": 48,
+            "documents": coll_info.get("unique_sources", 48),
             "pages": 2184,
-            "chunks": coll_info.get("points_count", 0) if isinstance(coll_info, dict) else "Unknown",
+            "chunks": coll_info.get("points_count", 0) if isinstance(coll_info, dict) else coll_info.get("points_count", "Unknown"),
             "dimensions": 384,
         },
         "configuration": {
@@ -596,6 +596,67 @@ def get_pipeline_info():
             "llm_backbone": f"{GROQ_MODEL} (Groq API)",
         },
     }
+
+import io
+import fitz
+
+@app.post("/api/ingest/stream")
+async def ingest_pdf_stream(file: UploadFile = File(...)):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF documents are supported.")
+
+    pdf_bytes = await file.read()
+    filename = file.filename
+
+    async def event_generator():
+        try:
+            # Step 1: In-memory Parsing
+            yield f"data: {json.dumps({'stage': 'parsing', 'progress': 15, 'message': 'Extracting text streams in RAM...'})}\n\n"
+            await asyncio.sleep(0.01) # Yield to event loop
+            
+            pdf_stream = io.BytesIO(pdf_bytes)
+            doc = fitz.open(stream=pdf_stream, filetype="pdf")
+            
+            chunks = []
+            total_pages = len(doc)
+            
+            for page_num, page in enumerate(doc):
+                text = page.get_text("text")
+                if text.strip():
+                    page_chunks = [text[i:i+800] for i in range(0, len(text), 700)]
+                    for idx, chunk_text in enumerate(page_chunks):
+                        chunks.append({
+                            "text": chunk_text,
+                            "metadata": {
+                                "source": filename,
+                                "page": page_num + 1,
+                                "chunk_id": f"{filename}_p{page_num+1}_c{idx}"
+                            }
+                        })
+            doc.close()
+            pdf_stream.close()
+
+            # Step 2: Vectorization
+            yield f"data: {json.dumps({'stage': 'embedding', 'progress': 50, 'message': f'Generated {len(chunks)} chunks. Vectorizing via FastEmbed...'})}\n\n"
+            await asyncio.sleep(0.01)
+
+            # Batch process vectors to avoid RAM spikes
+            batch_size = 64
+            retriever_obj = get_retriever()
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i:i + batch_size]
+                await retriever_obj.upsert_in_memory_chunks(batch)
+                progress = 50 + int((i / len(chunks)) * 40)
+                yield f"data: {json.dumps({'stage': 'indexing', 'progress': progress, 'message': f'Indexed {i + len(batch)}/{len(chunks)} chunks in Qdrant...'})}\n\n"
+                await asyncio.sleep(0.01)
+
+            # Step 3: Atomic Registry Update
+            yield f"data: {json.dumps({'stage': 'complete', 'progress': 100, 'message': f'Successfully added {filename} to Qdrant Cloud!'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'stage': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/api/analytics")
 def get_analytics_dashboard():
