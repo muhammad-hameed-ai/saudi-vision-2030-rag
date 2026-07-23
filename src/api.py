@@ -51,12 +51,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Strict Environment Validation (Security Requirement)
-_qdrant_url = os.getenv("QDRANT_CLOUD_URL") or os.getenv("QDRANT_URL")
-_qdrant_key = os.getenv("QDRANT_CLOUD_API_KEY") or os.getenv("QDRANT_API_KEY")
-_groq_key = os.getenv("GROQ_API_KEY")
+if not os.environ.get("GROQ_API_KEY"):
+    logger.critical("FATAL: Missing GROQ_API_KEY. Server booting halted.")
+    sys.exit(1)
 
-if not all([_qdrant_url, _qdrant_key, _groq_key]):
-    logger.critical("FATAL: Missing critical environment variables (QDRANT_URL/QDRANT_CLOUD_URL, etc). Server booting halted.")
+if not (os.environ.get("QDRANT_URL") or os.environ.get("QDRANT_CLOUD_URL")):
+    logger.critical("FATAL: Missing QDRANT_URL or QDRANT_CLOUD_URL. Server booting halted.")
+    sys.exit(1)
+
+if not (os.environ.get("QDRANT_API_KEY") or os.environ.get("QDRANT_CLOUD_API_KEY")):
+    logger.critical("FATAL: Missing QDRANT_API_KEY or QDRANT_CLOUD_API_KEY. Server booting halted.")
     sys.exit(1)
 
 os.environ["USE_HYDE"] = os.getenv("USE_HYDE", "true")
