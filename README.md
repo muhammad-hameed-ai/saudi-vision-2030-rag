@@ -1,101 +1,173 @@
-# 🇸🇦 Vision 2030: Enterprise Policy Intelligence Pipeline
+# 🛡️ Saudi Vision 2030: Policy Intelligence Pipeline
 
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![Qdrant](https://img.shields.io/badge/Qdrant-Cloud-FF5252?style=for-the-badge&logo=qdrant)
-![Groq](https://img.shields.io/badge/Llama_3.2-Groq-F56600?style=for-the-badge)
-![Vanilla JS](https://img.shields.io/badge/Vanilla_JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+> An enterprise-grade, cyber-resilient Retrieval-Augmented Generation (RAG) microservice built for real-time document intelligence, featuring zero-disk ingestion, $O(1)$ telemetry, rate-limited inference, and multi-layered defense-in-depth security.
 
-An autonomous, memory-safe Retrieval-Augmented Generation (RAG) microservice designed to ingest, index, and analyze complex policy documents. Engineered with a strict zero-disk footprint for ephemeral cloud environments, featuring real-time MLOps telemetry, deferred execution lifecycle management, and a high-performance ASGI backend.
-
-## 🌐 Live Demo
-**https://saudi-vision-2030-rag-3.onrender.com**
-
-> **Note:** No setup required. Opens in any browser. The application is hosted on Render's free tier and may take ~30 seconds to wake up from a cold start on the first visit. Ask anything about Saudi Vision 2030 policy.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Qdrant](https://img.shields.io/badge/VectorDB-Qdrant%20Cloud-DC2626.svg?style=flat&logo=qdrant)](https://qdrant.tech)
+[![Groq](https://img.shields.io/badge/LLM-Llama--3.2%20(Groq)-F97316.svg?style=flat)](https://groq.com)
+[![Security Grade](https://img.shields.io/badge/Security-Defense--in--Depth-10B981.svg?style=flat)](#-defense-in-depth-security-matrix)
+[![Deployment](https://img.shields.io/badge/Deployment-Render-46E3B7.svg?style=flat&logo=render)](https://render.com)
 
 ---
 
-## 🏛️ System Architecture
+## 📐 System Architecture
 
-This pipeline is built on a highly optimized, asynchronous architecture designed to bypass the traditional I/O bottlenecks of ephemeral cloud deployments.
+The pipeline processes high-density policy PDFs completely in-memory, converts structural content into dense vector embeddings using cosine distance matching, and serves streaming responses through an isolated, authenticated API layer.
 
-```mermaid
-graph TD
-    A[Client Browser UI] -->|Multipart Upload| B[FastAPI ASGI Backend]
-    B -->|io.BytesIO Stream| C[PyMuPDF Zero-Disk Parser]
-    C -->|Text Chunks| D[FastEmbed Model]
-    D -->|384-Dim Vectors| E[(Qdrant Cloud Vector DB)]
-    A -->|Search Query| B
-    B -->|Hybrid Dense+Sparse Search| E
-    E -->|Retrieved Context| F[Groq API / Llama-3.2]
-    F -->|SSE Streamed Answer| A
+$$\text{Cosine Similarity: } \cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
+
+```text
+                      [ USER INTERFACE ]
+            (Responsive Web / Mobile Viewports)
+                            |
+                            v
+           +----------------------------------+
+           |    DEFENSE-IN-DEPTH SHIELD      |
+           | - SlowAPI (10 req/min)           |
+           | - Pydantic Payload Limits (1000c) |
+           | - Strict Origin CORS Lock        |
+           +----------------------------------+
+                            |
+                            v
+                   [ FASTAPI ENGINE ]
+                            |
+   +------------------------+------------------------+
+   |                                                 |
+   v                                                 v
+[ In-Memory Processing ]                       [ Qdrant Cloud ]
+
+PyMuPDF Loader                               - FastEmbed Vectors
+
+Zero-Disk RAM Pipeline                       - O(1) Telemetry
+
+Atomic Chunking                              - Pre-Flight Auth Lock
+|                                                 |
++------------------------+------------------------+
+|
+v
+[ GROQ INFERENCE ]
+(Llama-3.2 SSE Stream)
 ```
 
-### 1. Zero-Disk In-Memory Ingestion Engine
-Traditional RAG pipelines rely on physical disk storage to parse PDFs, which fails on ephemeral servers that wipe data upon restart. This system utilizes a **Zero-Disk RAM Pipeline**:
-* `PyMuPDF` (`fitz`) intercepts the `io.BytesIO` multipart stream directly in memory.
-* Text is chunked and vectorized via `FastEmbed` (`sentence-transformers/all-MiniLM-L6-v2`) entirely within RAM.
-* Real-time progress is streamed back to the client via **Server-Sent Events (SSE)**.
+---
 
-### 2. $O(1)$ MLOps Telemetry & Vector Storage
-* **Database:** Qdrant Cloud (Hybrid Dense + Sparse).
-* **Telemetry Sync:** Utilizing Qdrant's `KEYWORD` Facet API to achieve $O(1)$ time complexity for real-time document counting and chunk aggregation, bypassing full-table scans.
-* **Distance Metric:** Cosine Similarity + Reciprocal Rank Fusion (RRF).
+## 🔥 Key Engineering Highlights
 
-### 3. Asynchronous Inference Backbone
-* **LLM:** `Llama-3.1-8b-instant` served via the Groq API for ultra-low latency generation.
-* **Context Anchoring:** The backend dynamically generates precise citation tooltips mapping the LLM's response to the exact source document and page number.
+### ⚡ 1. Zero-Disk RAM-Bound Ingestion Pipeline
+* **Stateless Processing:** Documents are processed directly in memory via `PyMuPDFLoader` byte streams without writing transient files to server disk.
+* **Low Latency:** Eliminates disk I/O bottlenecks during vectorization, ensuring maximum throughput and instant cleanup upon container termination.
+* **$O(1)$ Telemetry:** Real-time collection metrics and vector counts are queried directly through Qdrant facet aggregations with zero database re-indexing penalties.
+
+### 🛡️ 2. Pre-Flight Auth & Optimistic UI
+* **Synchronous Pre-Flight Lock:** Native client-side actions trigger an immediate `GET /api/documents/auth` validation step prior to updating client state.
+* **Deferred Deletion Execution:** Validated actions engage a 10-second non-blocking deferred execution queue with full undo capabilities, maintaining telemetry synchronization between DOM state and vector storage.
+
+### 📱 3. Mobile-First Responsive Design
+* **Adaptive Viewport Breakpoints:** Dynamic transformation from multi-column analytics grids ($>768\text{px}$) to single-column stacked mobile layouts ($<768\text{px}$).
+* **Ergonomic Touch Targets:** Minimum 44px touch targets across sticky input bars, quick-query chips, and off-canvas slide-out session menus.
 
 ---
 
-## 🛠️ Technology Matrix
+## 🔒 Defense-in-Depth Security Matrix
 
-| Layer | Technologies Used | Purpose |
+| Security Layer | Mechanism | Implementation Detail |
 | :--- | :--- | :--- |
-| **Frontend UI** | HTML5, CSS3, Vanilla JS, Chart.js | DOM manipulation, Deferred Execution (Undo Queue), Analytics |
-| **Backend API** | Python, FastAPI, Uvicorn | ASGI routing, Multipart stream parsing, SSE generation |
-| **AI / ML Ops** | Groq API, FastEmbed, PyMuPDF | Inference, Vector embedding, Structure-aware chunking |
-| **Data Eng.** | Qdrant Cloud | Permanent vector storage, exact-match keyword filtering |
+| **Boot Validation** | Fail-Fast Environment Check | Executes `sys.exit(1)` on startup if `GROQ_API_KEY`, `QDRANT_URL`, or `QDRANT_API_KEY` are missing. |
+| **Origin Protection** | Strict CORS Binding | Rejects all origins except explicit application production endpoints and local dev ports. |
+| **DDoS Prevention** | SlowAPI Rate Limiting | Enforces `@limiter.limit("10/minute")` tracking client remote IP addresses (`get_remote_address`). |
+| **Payload Hardening** | Pydantic Schema Guards | Enforces `max_length=1000` on input parameters to block buffer exhaustion and prompt-injection vectors. |
+| **Cryptographic Lock** | Token Header Validation | Protects destructive endpoints (`DELETE /api/documents/{id}`) behind mandatory `X-Admin-Access-Token` checks. |
 
 ---
 
-## 🚀 Key Engineering Features
+## 🛠️ Tech Stack & Dependencies
 
-- **Document Control Directory (CRUD):** A complete lifecycle management console allowing users to inspect active vectors and permanently purge documents.
-- **Gmail-Style Deferred Execution:** Deletions trigger an optimistic UI update and a 10-second client-side "Undo Queue", preventing expensive accidental database re-indexing with zero network overhead.
-- **Persistent Local Sessions:** Chat history and telemetry arrays are managed via a robust JavaScript `SessionManager` class writing to `localStorage`, entirely bypassing backend state management.
+* **Backend Framework:** FastAPI (Python 3.11+)
+* **Vector Database:** Qdrant Cloud Cluster
+* **LLM Orchestration:** Groq API (`llama-3.2-90b-vision-preview` / `llama-3.1-8b-instant`)
+* **Document Parsing:** PyMuPDF (`fitz`)
+* **Rate Limiting:** SlowAPI / Starlette
+* **Frontend:** Vanilla JavaScript (ES6+), Modern CSS3 (CSS Grid/Flexbox), Chart.js
+* **Deployment:** Render PaaS (Automated CD via GitHub Sync)
 
 ---
 
-## 💻 Local Development Setup
+## 🚀 REST API Specification
 
-To run this pipeline locally for development or architectural testing:
+### Inference & Querying
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git
-   cd saudi-vision-2030-rag
-   ```
+#### `POST /api/chat`
+Stream LLM policy analysis responses using Server-Sent Events (SSE).
+* **Rate Limit:** 10 requests / minute
+* **Payload:**
+```json
+{
+  "message": "What are the primary targets for non-oil GDP growth in Vision 2030?",
+  "session_id": "sess_88329"
+}
+```
 
-2. **Establish the virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/Scripts/activate  # Windows
-   ```
+### Document Management & Auth
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+#### `GET /api/documents/auth`
+Pre-flight passcode verification step for administrative actions.
 
-4. **Configure Environment Variables:**
-   Create a `.env` file in the root directory:
-   ```env
-   GROQ_API_KEY=your_groq_key
-   QDRANT_URL=your_qdrant_cluster_url
-   QDRANT_API_KEY=your_qdrant_api_key
-   ```
+* **Headers:** `X-Admin-Access-Token: <ADMIN_PASSPHRASE>`
 
-5. **Initialize the ASGI Server:**
-   ```bash
-   uvicorn src.api:app --reload
-   ```
+**Response (200 OK):**
+```json
+{
+  "authenticated": true,
+  "status": "access_granted"
+}
+```
+
+#### `DELETE /api/documents/{document_id}`
+Permanently purges vector embeddings associated with a specific document payload from Qdrant Cloud.
+
+* **Headers:** `X-Admin-Access-Token: <ADMIN_PASSPHRASE>`
+
+**Response (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Document vectors successfully purged."
+}
+```
+
+---
+
+## 💻 Local Setup & Development
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git
+cd saudi-vision-2030-rag
+```
+
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory:
+```env
+GROQ_API_KEY=gsk_your_groq_api_key_here
+QDRANT_URL=https://your-cluster.qdrant.tech:6333
+QDRANT_API_KEY=your_qdrant_api_key_here
+ADMIN_PASSPHRASE=3331604
+```
+
+### 3. Install Dependencies
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 4. Run Development Server
+```bash
+uvicorn src.api:app --reload --port 8000
+```
+Access the dashboard locally at `http://localhost:8000`.
+
+---
+
+## 📜 License
+Distributed under the MIT License. See `LICENSE` for details.
