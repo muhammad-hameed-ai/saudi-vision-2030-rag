@@ -1046,12 +1046,8 @@
                 currentAbortController = null;
             }
 
-            // Auto-Name Session
-            if (isFirstQueryInSession && chatSessions[activeSessionId]) {
-                chatSessions[activeSessionId].title = extractTopic(queryText);
-                isFirstQueryInSession = false;
-                renderSessions();
-            }
+            // Auto-Name Session is handled gracefully inside SessionManager.addMessage
+            isFirstQueryInSession = false;
 
             inputField.value = "";
             inputField.style.height = 'auto';
@@ -1073,10 +1069,11 @@
                     const pTag = existingBubble.querySelector("p.leading-relaxed");
                     if (pTag) pTag.innerText = queryText;
 
-                    if (chatSessions[activeSessionId]) {
-                        const messages = chatSessions[activeSessionId].messages;
-                        const idx = messages.findIndex(m => m.id === activeEditingMessageId);
-                        if (idx > -1) messages[idx].content = queryText;
+                    const activeSession = sessionManager.getSession(sessionManager.currentSessionId);
+                    if (activeSession) {
+                        const idx = activeSession.messages.findIndex(m => m.id === activeEditingMessageId);
+                        if (idx > -1) activeSession.messages[idx].content = queryText;
+                        sessionManager.saveSessions();
                     }
                 }
                 activeEditingMessageId = null;
