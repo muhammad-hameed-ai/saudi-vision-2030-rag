@@ -597,6 +597,33 @@ def get_pipeline_info():
         },
     }
 
+@app.get("/api/documents")
+def get_documents():
+    """Returns the list of documents and their chunk counts."""
+    try:
+        retriever_obj = get_retriever()
+        registry = retriever_obj.get_document_registry()
+        return {"documents": registry}
+    except Exception as e:
+        logger.error(f"Error fetching document registry: {e}")
+        return JSONResponse(status_code=500, content={"error": "Failed to fetch document registry"})
+
+@app.delete("/api/documents")
+def delete_document_endpoint(filename: str):
+    """Deletes all chunks associated with a specific document."""
+    if not filename:
+        return JSONResponse(status_code=400, content={"error": "Filename parameter is required."})
+    try:
+        retriever_obj = get_retriever()
+        success = retriever_obj.delete_document(filename)
+        if success:
+            return {"status": "success", "message": f"Document '{filename}' purged successfully."}
+        else:
+            return JSONResponse(status_code=500, content={"error": f"Failed to purge document '{filename}'."})
+    except Exception as e:
+        logger.error(f"Error deleting document '{filename}': {e}")
+        return JSONResponse(status_code=500, content={"error": f"Exception occurred while purging '{filename}'."})
+
 import io
 import fitz
 

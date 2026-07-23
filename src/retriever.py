@@ -153,6 +153,48 @@ class HybridRetriever:
                 "unique_sources": 48
             }
 
+    def get_document_registry(self) -> list:
+        """Retrieves a registry of all uniquely uploaded documents and their chunk counts."""
+        try:
+            client = self._get_client()
+            facet_result = client.facet(
+                collection_name=self.COLLECTION_NAME,
+                key="metadata.source",
+                limit=1000
+            )
+            registry = []
+            if facet_result.hits:
+                for hit in facet_result.hits:
+                    registry.append({
+                        "filename": hit.value,
+                        "chunks": hit.count
+                    })
+            return registry
+        except Exception as e:
+            logger.error(f"Failed to fetch document registry: {e}")
+            return []
+
+    def delete_document(self, filename: str) -> bool:
+        """Atomic vector deletion based on metadata.source matching."""
+        try:
+            client = self._get_client()
+            client.delete(
+                collection_name=self.COLLECTION_NAME,
+                points_selector=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="metadata.source",
+                            match=models.MatchValue(value=filename)
+                        )
+                    ]
+                )
+            )
+            logger.info(f"Successfully purged vectors for document: {filename}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete document {filename}: {e}")
+            return False
+
     async def upsert_in_memory_chunks(self, chunks: List[dict]):
         """
         Asynchronously vectorizes and upserts a batch of chunk dictionaries.
