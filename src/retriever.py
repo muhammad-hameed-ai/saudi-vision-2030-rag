@@ -74,7 +74,7 @@ class HybridRetriever:
                     self._client.create_payload_index(
                         collection_name=self.COLLECTION_NAME,
                         field_name="metadata.source",
-                        field_schema=models.PayloadSchemaType.TEXT,
+                        field_schema=models.PayloadSchemaType.KEYWORD,
                     )
                     logger.info(f"[Retriever] Payload indexes verified/created for {self.COLLECTION_NAME}")
                 except Exception as e:
