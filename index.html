@@ -1150,10 +1150,10 @@
                 </div>
                 <div class="bg-slate-900/60 border border-slate-700/50 rounded-2xl rounded-tl-sm p-5 pb-4 text-sm text-slate-200 max-w-[85%] w-full shadow-md backdrop-blur-sm relative group/sys">
                     <div class="prose prose-invert prose-emerald max-w-none text-sm pr-6 message-content-box">
-                        <div class="flex items-center space-x-2 text-rose-400/90 font-mono text-xs px-2 py-1 bg-rose-500/10 border border-rose-500/20 rounded-md w-fit generation-indicator">
+                        <div class="flex items-center space-x-2 text-emerald-400 font-mono text-xs px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-md w-fit generation-indicator">
                             <span class="relative flex h-2.5 w-2.5">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                             </span>
                             <span id="timer-${chunk.id}">Generating response... 0.0s</span>
                         </div>
@@ -1186,11 +1186,16 @@
                 const previewText = escapeHtml(c.section || 'General Content extracted from document structure.');
                 html += `
                     <div class="group/cit relative px-2.5 py-1.5 rounded-md bg-slate-950 border border-slate-800 hover:border-emerald-500/30 flex items-center space-x-2 text-[11px] transition-colors cursor-help">
-                        <span class="text-slate-300 font-medium truncate max-w-[150px]">${escapeHtml(cleanFile)}</span>
+                        <div class="group/file relative flex items-center">
+                            <span class="text-slate-300 font-medium truncate max-w-[150px] cursor-help">${escapeHtml(cleanFile)}</span>
+                            <div class="absolute bottom-full left-0 mb-2 hidden w-max max-w-xs rounded-md bg-gray-800 px-2.5 py-1.5 text-xs text-gray-200 shadow-lg ring-1 ring-gray-700 group-hover/file:block z-50">
+                                ${escapeHtml(c.file || 'Unknown Source')}
+                            </div>
+                        </div>
                         <span class="w-1 h-1 rounded-full bg-slate-700"></span>
                         <span class="text-slate-500">Pg ${c.page || '-'}</span>
                         <span class="w-1 h-1 rounded-full bg-slate-700"></span>
-                        <span class="text-emerald-400/90 font-semibold">${(c.score * 100).toFixed(0)}%</span>
+                        <span class="text-[10px] font-bold text-emerald-400 tracking-wide bg-emerald-900/20 px-1.5 py-0.5 rounded-sm">${(c.score * 100).toFixed(0)}%</span>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 opacity-0 group-hover/cit:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl shadow-black/50">
                             <span class="block text-[10px] font-semibold text-emerald-400 mb-2 border-b border-slate-700 pb-1.5 uppercase tracking-wider">Confidence: ${(c.score * 100).toFixed(1)}%</span>
                             <p class="text-xs italic leading-relaxed text-slate-400 line-clamp-4">"${previewText}"</p>
