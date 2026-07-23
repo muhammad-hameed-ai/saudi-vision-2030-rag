@@ -12,3 +12,4 @@ langchain-community
 # --- Cloud LLM ---
 groq>=0.4.0
 PyMuPDF
+python-multipart
