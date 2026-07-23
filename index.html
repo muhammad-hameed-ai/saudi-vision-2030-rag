@@ -1373,18 +1373,20 @@
         function appendTelemetryFooter(container, payload) {
             const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
             const footer = document.createElement("div");
-            footer.className = "mt-5 pt-3 border-t border-gray-700 flex justify-between items-center text-gray-400";
-            footer.style.fontSize = "0.85rem";
+            footer.className = "flex items-center justify-between border-t border-emerald-900/30 pt-2 mt-4 text-[11px] font-medium text-emerald-500/70 tracking-wide";
             footer.innerHTML = `
-                <div class="flex items-center space-x-4 w-full justify-between">
-                    <span>⏱️ ${payload.generation_time}s Generation</span>
-                    <span>|</span>
-                    <span>🔍 Depth: K=${payload.retrieval_k}</span>
-                    <span>|</span>
-                    <span>📅 ${timestamp}</span>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="timer" class="w-3.5 h-3.5"></i> <span>${payload.generation_time}s Generation</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i> <span>Depth: K=${payload.retrieval_k}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i> <span>${timestamp}</span>
                 </div>
             `;
             container.querySelector(".bg-slate-900\\/60").appendChild(footer);
+            lucide.createIcons();
         }
 
         function appendErrorBlock(msg) {

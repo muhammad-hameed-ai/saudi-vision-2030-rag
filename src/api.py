@@ -408,7 +408,7 @@ async def generate_rag_stream(request: ChatRequest):
             logger.warning(f"Session history save skipped: {mem_err}")
 
         elapsed = round(time.time() - start_time, 2)
-        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': RETRIEVAL_K})}\n\n"
+        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': request.k})}\n\n"
         yield "data: [DONE]\n\n"
 
     except Exception as e:
