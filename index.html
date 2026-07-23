@@ -1644,10 +1644,13 @@
                 tr.setAttribute("data-filename", doc.filename);
                 tr.setAttribute("data-chunks", doc.chunks);
                 
+                // Strip folder paths and backslashes for display
+                const cleanDisplayName = doc.filename.split(/[/\\]/).pop();
+                
                 tr.innerHTML = `
                     <td class="py-3 px-2 flex items-center space-x-2">
                         <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
-                        <span class="font-medium truncate max-w-[200px]" title="${doc.filename}">${doc.filename}</span>
+                        <span class="font-medium truncate max-w-[200px]" title="${cleanDisplayName}">${cleanDisplayName}</span>
                     </td>
                     <td class="py-3 px-2 text-right mono text-xs">${doc.chunks.toLocaleString()}</td>
                     <td class="py-3 px-2 text-center">
