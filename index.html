@@ -1775,6 +1775,9 @@
         });
 
         function queueDocumentDeletion(filename) {
+            const passcode = prompt("Administrative Access Required.\\n\\nEnter passcode to authorize vector deletion:");
+            if (!passcode) return; // Abort instantly on cancel or empty
+
             const row = document.querySelector(`.directory-row[data-filename="${filename}"]`);
             if(!row) return;
 
@@ -1793,10 +1796,10 @@
             }
 
             // Show Toast
-            showUndoToast(filename, row, chunks);
+            showUndoToast(filename, row, chunks, passcode);
         }
 
-        function showUndoToast(filename, row, chunks) {
+        function showUndoToast(filename, row, chunks, passcode) {
             const toast = document.getElementById("undo-toast");
             const toastText = document.getElementById("undo-toast-text");
             const undoBtn = document.getElementById("undo-btn");
@@ -1810,11 +1813,22 @@
             undoTimeoutIds[filename] = setTimeout(async () => {
                 toast.classList.add("translate-y-full", "opacity-0");
                 try {
-                    const res = await fetch(`${BASE_BACKEND_URL}/api/documents?filename=${encodeURIComponent(filename)}`, { method: "DELETE" });
+                    const res = await fetch(`${BASE_BACKEND_URL}/api/documents?filename=${encodeURIComponent(filename)}`, { 
+                        method: "DELETE",
+                        headers: {
+                            "X-Admin-Access-Token": passcode
+                        }
+                    });
                     if(res.ok) {
                         row.remove();
                         syncPipelineTelemetry();
                     } else {
+                        const errText = await res.text();
+                        if (res.status === 403) {
+                            alert("Access Denied: Invalid Administrative Passcode.");
+                        } else {
+                            alert("Purge Failed: " + errText);
+                        }
                         throw new Error("Purge Failed");
                     }
                 } catch(e) {

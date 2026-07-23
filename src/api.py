@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, Any, List
 from collections import deque
 
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, UploadFile, File, Header
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
@@ -45,6 +45,17 @@ from src.memory import save_message, get_session_history, summarize_history
 # ---------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vision2030.api")
+
+import sys
+from dotenv import load_dotenv
+load_dotenv()
+
+# Strict Environment Validation (Security Requirement)
+_required_keys = ["GROQ_API_KEY", "QDRANT_URL", "QDRANT_API_KEY"]
+_missing_keys = [key for key in _required_keys if not os.environ.get(key)]
+if _missing_keys:
+    logger.critical(f"FATAL: Missing critical environment variables: {', '.join(_missing_keys)}. Server booting halted.")
+    sys.exit(1)
 
 os.environ["USE_HYDE"] = os.getenv("USE_HYDE", "true")
 
@@ -224,9 +235,15 @@ async def lifespan(app: FastAPI):
     logger.info("[SHUTDOWN] Terminating server context loops.")
 
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 # ---------------------------------------------------------------------------
 # Application Instance & Middleware Setup
 # ---------------------------------------------------------------------------
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="Saudi Vision 2030 Policy Intelligence Hub API",
     description="Enterprise-grade production asynchronous RAG engine utilizing Hybrid Architecture.",
@@ -234,10 +251,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(StructuredLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8000", 
+        "http://127.0.0.1:8000", 
+        "https://saudi-vision-2030-rag-3.onrender.com" # Render production URL
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -287,7 +311,7 @@ async def _build_memory_string(session_id: str) -> str:
 # ---------------------------------------------------------------------------
 class ChatRequest(BaseModel):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    question: str = Field(default="")
+    question: str = Field(default="", max_length=1000)
     k: int = Field(default=5, ge=1, le=10)
 
     @model_validator(mode='before')
@@ -429,7 +453,8 @@ async def generate_rag_stream(request: ChatRequest):
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
 @app.post("/api/chat")
-async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTasks):
+@limiter.limit("10/minute")
+async def process_rag_chat(http_request: Request, request: ChatRequest, background_tasks: BackgroundTasks):
     """Main interactive chat endpoint using Server-Sent Events (SSE)."""
     # Register forced garbage collection after the response is sent
     background_tasks.add_task(gc.collect)
@@ -445,7 +470,8 @@ async def process_rag_chat(request: ChatRequest, background_tasks: BackgroundTas
     )
 
 @app.post("/ask", response_model=AskResponse)
-async def ask(request: ChatRequest, background_tasks: BackgroundTasks):
+@limiter.limit("10/minute")
+async def ask(http_request: Request, request: ChatRequest, background_tasks: BackgroundTasks):
     """Programmatic standard validation endpoint."""
     global request_count
     
@@ -609,8 +635,12 @@ def get_documents():
         return JSONResponse(status_code=500, content={"error": "Failed to fetch document registry"})
 
 @app.delete("/api/documents")
-def delete_document_endpoint(filename: str):
+def delete_document_endpoint(filename: str, x_admin_access_token: Optional[str] = Header(None)):
     """Deletes all chunks associated with a specific document."""
+    admin_pass = os.getenv("ADMIN_PASSPHRASE", "3331604")
+    if not x_admin_access_token or x_admin_access_token != admin_pass:
+        return JSONResponse(status_code=403, content={"error": "Forbidden. Invalid administrative passcode."})
+
     if not filename:
         return JSONResponse(status_code=400, content={"error": "Filename parameter is required."})
     try:
