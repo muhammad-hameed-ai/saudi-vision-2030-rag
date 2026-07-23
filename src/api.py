@@ -460,13 +460,13 @@ async def generate_rag_stream(request: ChatRequest):
 
 @app.post("/api/chat")
 @limiter.limit("10/minute")
-async def process_rag_chat(http_request: Request, request: ChatRequest, background_tasks: BackgroundTasks):
+async def process_rag_chat(request: Request, payload: ChatRequest, background_tasks: BackgroundTasks):
     """Main interactive chat endpoint using Server-Sent Events (SSE)."""
     # Register forced garbage collection after the response is sent
     background_tasks.add_task(gc.collect)
     
     return StreamingResponse(
-        generate_rag_stream(request),
+        generate_rag_stream(payload),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -477,14 +477,14 @@ async def process_rag_chat(http_request: Request, request: ChatRequest, backgrou
 
 @app.post("/ask", response_model=AskResponse)
 @limiter.limit("10/minute")
-async def ask(http_request: Request, request: ChatRequest, background_tasks: BackgroundTasks):
+async def ask(request: Request, payload: ChatRequest, background_tasks: BackgroundTasks):
     """Programmatic standard validation endpoint."""
     global request_count
     
     # Register forced garbage collection after the response is sent
     background_tasks.add_task(gc.collect)
     
-    if len(request.question) > 500:
+    if len(payload.question) > 500:
         raise HTTPException(status_code=422, detail="Query exceeds maximum allowed limit of 500 characters.")
 
     t0 = time.time()
@@ -494,14 +494,14 @@ async def ask(http_request: Request, request: ChatRequest, background_tasks: Bac
         retriever_obj = get_retriever()
         reranker_obj = get_reranker()
 
-        optimized_query = optimize_search_query(request.question)
+        optimized_query = optimize_search_query(payload.question)
         use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
         search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
         
         candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
-        reranked = await asyncio.to_thread(reranker_obj.rerank, request.question, candidates, top_k=request.k)
+        reranked = await asyncio.to_thread(reranker_obj.rerank, payload.question, candidates, top_k=payload.k)
 
-        memory_str = await _build_memory_string(request.session_id)
+        memory_str = await _build_memory_string(payload.session_id)
         context_text = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context_text)
 
@@ -510,7 +510,7 @@ async def ask(http_request: Request, request: ChatRequest, background_tasks: Bac
             model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.question}
+                {"role": "user", "content": payload.question}
             ],
             max_tokens=2048,
             temperature=0.2,
@@ -519,9 +519,9 @@ async def ask(http_request: Request, request: ChatRequest, background_tasks: Bac
         ai_answer = response.choices[0].message.content.strip()
 
         try:
-            await asyncio.to_thread(save_message, request.session_id, "user", request.question)
-            await asyncio.to_thread(save_message, request.session_id, "assistant", ai_answer)
-            asyncio.create_task(summarize_history(request.session_id))
+            await asyncio.to_thread(save_message, payload.session_id, "user", payload.question)
+            await asyncio.to_thread(save_message, payload.session_id, "assistant", ai_answer)
+            asyncio.create_task(summarize_history(payload.session_id))
         except Exception as mem_err:
             logger.warning(f"Session history save skipped: {mem_err}")
 
@@ -541,7 +541,7 @@ async def ask(http_request: Request, request: ChatRequest, background_tasks: Bac
 
         await asyncio.to_thread(
             log_rag_query,
-            query=request.question,
+            query=payload.question,
             sources=[s.model_dump() for s in sources],
             reranker_scores=[getattr(c, 'score', 0.0) for c in reranked],
             answer=ai_answer,
@@ -551,8 +551,8 @@ async def ask(http_request: Request, request: ChatRequest, background_tasks: Bac
         )
 
         return AskResponse(
-            session_id=request.session_id,
-            question=request.question,
+            session_id=payload.session_id,
+            question=payload.question,
             answer=ai_answer,
             sources=sources,
             retrieval_chunks=len(candidates),
@@ -659,6 +659,14 @@ def delete_document_endpoint(filename: str, x_admin_access_token: Optional[str] 
     except Exception as e:
         logger.error(f"Error deleting document '{filename}': {e}")
         return JSONResponse(status_code=500, content={"error": f"Exception occurred while purging '{filename}'."})
+
+@app.get("/api/documents/auth")
+def verify_document_auth(x_admin_access_token: Optional[str] = Header(None)):
+    """Pre-flight check to verify admin passcode without deleting anything."""
+    admin_pass = os.getenv("ADMIN_PASSPHRASE", "3331604")
+    if not x_admin_access_token or x_admin_access_token != admin_pass:
+        return JSONResponse(status_code=403, content={"error": "Forbidden. Invalid administrative passcode."})
+    return {"status": "success"}
 
 import io
 import fitz

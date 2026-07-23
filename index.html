@@ -1774,9 +1774,24 @@
             }
         });
 
-        function queueDocumentDeletion(filename) {
+        async function queueDocumentDeletion(filename) {
             const passcode = prompt("Administrative Access Required.\\n\\nEnter passcode to authorize vector deletion:");
             if (!passcode) return; // Abort instantly on cancel or empty
+
+            try {
+                // Pre-flight validation
+                const authRes = await fetch(`${BASE_BACKEND_URL}/api/documents/auth`, {
+                    headers: { "X-Admin-Access-Token": passcode }
+                });
+                
+                if (!authRes.ok) {
+                    alert("Access Denied: Invalid Administrative Passcode.");
+                    return;
+                }
+            } catch (e) {
+                alert("Network error during authentication.");
+                return;
+            }
 
             const row = document.querySelector(`.directory-row[data-filename="${filename}"]`);
             if(!row) return;
