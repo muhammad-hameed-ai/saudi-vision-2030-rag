@@ -571,6 +571,7 @@ def get_pipeline_info():
             "dimensions": 384,
         },
         "configuration": {
+            "document_loader": "PyMuPDFLoader",
             "chunking_strategy": "Structure-Aware Recursive Splitting",
             "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
             "sparse_model": "Qdrant/bm25",

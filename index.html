@@ -944,7 +944,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (document.getElementById("pipe-loader")) {
-                        document.getElementById("pipe-loader").innerText = data.configuration ? data.configuration.document_loader : (data.corpus?.chunking_strategy || "PyPDFLoader");
+                        document.getElementById("pipe-loader").innerText = (data.configuration && data.configuration.document_loader) ? data.configuration.document_loader : "PyMuPDFLoader";
                         document.getElementById("pipe-docs").innerText = data.corpus_summary ? data.corpus_summary.documents : (data.corpus?.documents || 48);
                         document.getElementById("pipe-chunks").innerText = (data.corpus_summary ? data.corpus_summary.chunks : (data.corpus?.chunks || 0)).toLocaleString();
                         document.getElementById("pipe-dims").innerText = data.corpus_summary ? data.corpus_summary.dimensions : (data.corpus?.vector_dimensions || 384);
