@@ -79,6 +79,71 @@
         .prose li {
             margin-bottom: 0.25em;
         }
+
+        /* ==========================================
+           MOBILE & TABLET RESPONSIVE OVERRIDES
+           ========================================== */
+        @media (max-width: 768px) {
+          /* 1. Main Dashboard Layout - Stack Vertically */
+          body, .app-container, .main-layout {
+            flex-direction: column !important;
+            overflow-x: hidden !important;
+          }
+
+          /* 2. Responsive Header Elements */
+          header, .top-nav, .pipeline-header {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            padding: 12px 16px !important;
+          }
+
+          .header-actions, .status-badge-container {
+            width: 100% !important;
+            justify-content: space-between !important;
+            margin-top: 6px !important;
+          }
+
+          /* 3. Collapse Grids to Single Column */
+          .grid, .grid-2-col, .grid-3-col, .architecture-cards {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          /* 4. Sidebar / Navigation Matrices */
+          .sidebar, .navigation-matrices {
+            width: 100% !important;
+            max-height: none !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+          }
+
+          /* 5. Mobile-Optimized Typography & Cards */
+          h1, .brand-title {
+            font-size: 1.1rem !important;
+          }
+
+          .welcome-card, .console-box {
+            padding: 16px !important;
+            margin: 8px 0 !important;
+          }
+
+          /* 6. Sticky Chat Input Bar (Prevents Mobile Keyboard Clipping) */
+          .chat-input-container, .prompt-bar {
+            position: sticky !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            padding: 10px !important;
+            background: #0b0f19 !important; /* Match your dark bg */
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5) !important;
+          }
+
+          /* 7. Table Overflow Scrolling for Corpus Registry */
+          .table-container, .corpus-registry-table {
+            display: block !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+          }
+        }
     </style>
 </head>
 
