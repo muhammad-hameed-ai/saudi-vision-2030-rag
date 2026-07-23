@@ -18,6 +18,18 @@ An autonomous, memory-safe Retrieval-Augmented Generation (RAG) microservice des
 
 This pipeline is built on a highly optimized, asynchronous architecture designed to bypass the traditional I/O bottlenecks of ephemeral cloud deployments.
 
+```mermaid
+graph TD
+    A[Client Browser UI] -->|Multipart Upload| B[FastAPI ASGI Backend]
+    B -->|io.BytesIO Stream| C[PyMuPDF Zero-Disk Parser]
+    C -->|Text Chunks| D[FastEmbed Model]
+    D -->|384-Dim Vectors| E[(Qdrant Cloud Vector DB)]
+    A -->|Search Query| B
+    B -->|Hybrid Dense+Sparse Search| E
+    E -->|Retrieved Context| F[Groq API / Llama-3.2]
+    F -->|SSE Streamed Answer| A
+```
+
 ### 1. Zero-Disk In-Memory Ingestion Engine
 Traditional RAG pipelines rely on physical disk storage to parse PDFs, which fails on ephemeral servers that wipe data upon restart. This system utilizes a **Zero-Disk RAM Pipeline**:
 * `PyMuPDF` (`fitz`) intercepts the `io.BytesIO` multipart stream directly in memory.
