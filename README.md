@@ -16,37 +16,93 @@ The pipeline processes high-density policy PDFs completely in-memory, converts s
 
 $$\text{Cosine Similarity: } \cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
 
-```text
-                      [ USER INTERFACE ]
-            (Responsive Web / Mobile Viewports)
-                            |
-                            v
-           +----------------------------------+
-           |    DEFENSE-IN-DEPTH SHIELD      |
-           | - SlowAPI (10 req/min)           |
-           | - Pydantic Payload Limits (1000c) |
-           | - Strict Origin CORS Lock        |
-           +----------------------------------+
-                            |
-                            v
-                   [ FASTAPI ENGINE ]
-                            |
-   +------------------------+------------------------+
-   |                                                 |
-   v                                                 v
-[ In-Memory Processing ]                       [ Qdrant Cloud ]
+```mermaid
+graph TB
+    %% Enterprise Dark-Mode Color Palette
+    classDef clientZone fill:#090D16,stroke:#0EA5E9,stroke-width:2px,color:#F8FAFC;
+    classDef securityZone fill:#18080A,stroke:#F43F5E,stroke-width:2px,color:#FFE4E6;
+    classDef engineZone fill:#081810,stroke:#10B981,stroke-width:2px,color:#D1FAE5;
+    classDef ramZone fill:#160926,stroke:#A855F7,stroke-width:2px,color:#F3E8FF;
+    classDef vectorZone fill:#1C0A00,stroke:#F97316,stroke-width:2px,color:#FFEDD5;
+    classDef llmZone fill:#0F0F23,stroke:#6366F1,stroke-width:2px,color:#E0E7FF;
 
-PyMuPDF Loader                               - FastEmbed Vectors
+    %% 1. CLIENT PRESENTATION LAYER
+    subgraph Ingress ["📱 CLIENT PRESENTATION & INGRESS LAYER"]
+        direction LR
+        UI["💻 Vanilla JS PWA Client<br/><i>(Responsive Grid Viewports)</i>"]:::clientZone
+        State["⚡ Optimistic DOM State Engine"]:::clientZone
+        AuthModal["🔐 Admin Auth Challenge Dialog"]:::clientZone
+    end
+    style Ingress fill:#030712,stroke:#1E293B,stroke-width:1px,color:#94A3B8;
 
-Zero-Disk RAM Pipeline                       - O(1) Telemetry
+    %% 2. ZERO-TRUST SECURITY PERIMETER
+    subgraph Security ["🛡️ ZERO-TRUST SECURITY PERIMETER"]
+        direction TB
+        RateLimit{"⏱️ SlowAPI Rate Limiter<br/><i>(10 req/min IP Bucket)</i>"}:::securityZone
+        Pydantic{"🔍 Pydantic V2 Guardrail<br/><i>(1000 Char Strict Buffer)</i>"}:::securityZone
+        CORS{"🔒 Strict Origin CORS Lock<br/><i>(Render Domain Binding)</i>"}:::securityZone
+        HeaderAuth{"🔑 X-Admin-Access-Token<br/><i>(Pre-Flight Verification)</i>"}:::securityZone
+    end
+    style Security fill:#0F0506,stroke:#EF4444,stroke-width:1px,color:#FCA5A5;
 
-Atomic Chunking                              - Pre-Flight Auth Lock
-|                                                 |
-+------------------------+------------------------+
-|
-v
-[ GROQ INFERENCE ]
-(Llama-3.2 SSE Stream)
+    %% 3. FASTAPI CORE ENGINE
+    subgraph ApplicationCore ["⚡ FASTAPI CORE ORCHESTRATION ENGINE"]
+        direction TB
+        ASGI["🚀 Uvicorn ASGI Server Runtime"]:::engineZone
+        Router["🔀 Async Router & Task Controller"]:::engineZone
+    end
+    style ApplicationCore fill:#03120B,stroke:#10B981,stroke-width:1px,color:#6EE7B7;
+
+    %% 4. COMPUTATION & VECTOR PIPELINE
+    subgraph ComputeData ["💾 DISTRIBUTED COMPUTATION & VECTOR PIPELINE"]
+        direction LR
+        
+        subgraph RAMEngine ["🧠 Zero-Disk In-Memory Ingestion"]
+            direction TB
+            PyMuPDF["📄 PyMuPDF RAM Stream Loader"]:::ramZone
+            Chunker["✂️ Recursive Text Chunker"]:::ramZone
+            FastEmbed["📐 FastEmbed Vectorizer"]:::ramZone
+            PyMuPDF --> Chunker --> FastEmbed
+        end
+        style RAMEngine fill:#0B0314,stroke:#A855F7,stroke-width:1px,color:#E9D5FF;
+
+        subgraph VectorSubsystem ["🗄️ Qdrant Cloud Storage Subsystem"]
+            direction TB
+            Qdrant[("📦 Qdrant Cloud Cluster<br/><i>(Cosine Distance / HNSW Index)</i>")]:::vectorZone
+            Telemetry["📊 O(1) Facet Aggregations"]:::vectorZone
+            Qdrant --- Telemetry
+        end
+        style VectorSubsystem fill:#120500,stroke:#F97316,stroke-width:1px,color:#FFEDD5;
+    end
+    style ComputeData fill:#05020A,stroke:#334155,stroke-width:1px,color:#94A3B8;
+
+    %% 5. AI INFERENCE CLUSTER
+    subgraph AIInference ["🧠 GROQ ULTRA-LOW LATENCY INFERENCE CLUSTER"]
+        GroqEngine["⚡ Groq LPU Hardware Acceleration"]:::llmZone
+        LlamaModel["🤖 Llama-3.2 Context Engine"]:::llmZone
+        GroqEngine --- LlamaModel
+    end
+    style AIInference fill:#050514,stroke:#6366F1,stroke-width:1px,color:#A5B4FC;
+
+    %% NETWORK TRANSPORT & DATAFLOW ROUTES
+    UI -- "1. TLS 1.3 / HTTPS Request" --> RateLimit
+    RateLimit -- "IP Rate OK" --> Pydantic
+    Pydantic -- "Sanitized Payload" --> CORS
+    CORS -- "Valid Ingress Route" --> ASGI
+
+    AuthModal -- "Pre-Flight Token Check" --> HeaderAuth
+    HeaderAuth -- "Passcode Verified" --> Router
+
+    ASGI --> Router
+    Router -- "2a. In-Memory PDF Stream" --> PyMuPDF
+    Router -- "2b. Search Query Vectors" --> Qdrant
+
+    FastEmbed -- "3a. Direct Vector Upsert" --> Qdrant
+    Qdrant -- "3b. Top-K Context Matches" --> Router
+
+    Router -- "4. Augmented Prompt" --> GroqEngine
+    LlamaModel -. "5. Real-Time Token Stream (SSE)" .-> State
+    State -. "6. Viewport Hydration" .-> UI
 ```
 
 ---
