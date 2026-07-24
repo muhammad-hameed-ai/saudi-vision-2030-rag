@@ -1,4 +1,4 @@
-# 🛡️ Saudi Vision 2030: Policy Intelligence Pipeline
+#  Saudi Vision 2030: Policy Intelligence Pipeline
 
 > An enterprise-grade, cyber-resilient Retrieval-Augmented Generation (RAG) microservice built for real-time document intelligence, featuring zero-disk ingestion, $O(1)$ telemetry, rate-limited inference, and multi-layered defense-in-depth security.
 
