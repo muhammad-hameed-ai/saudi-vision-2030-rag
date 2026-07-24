@@ -90,25 +90,28 @@
         }
 
         /* ==========================================================================
-           SAUDI VISION 2030 - MOBILE RESPONSIVE ENGINE (MAX-WIDTH: 768PX)
+           SAUDI VISION 2030 - STRICT MOBILE OVERRIDE (MAX-WIDTH: 768PX)
            ========================================================================== */
 
         @media screen and (max-width: 768px) {
-          /* --- 1. Global Viewport Reset & Lock --- */
+          
+          /* --- 1. Global Viewport Lock --- */
           html, body {
             overflow-x: hidden !important;
             background-color: #080c14 !important;
             color: #f8fafc !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            height: 100% !important; 
+            position: relative !important;
           }
 
-          /* Main container padding compensation for top header & bottom nav */
           body {
-            padding-top: 60px !important;
-            padding-bottom: 70px !important;
+            padding-top: 60px !important; /* Strict spacing for top header */
+            padding-bottom: 80px !important; /* Strict spacing for bottom nav */
+            display: block !important; /* Kill any body-level flexbox from desktop */
           }
 
-          /* --- 2. Compact Mobile Header --- */
+          /* --- 2. Top Header Restraint --- */
           .header, header, #top-header {
             position: fixed !important;
             top: 0 !important;
@@ -123,104 +126,62 @@
             align-items: center !important;
             justify-content: space-between !important;
             padding: 0 16px !important;
+            margin: 0 !important;
           }
 
-          .header-title-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .status-badge-active {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            font-size: 10px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 12px;
-            letter-spacing: 0.5px;
-          }
-
-          /* --- 3. View Switcher (Tab Containers) --- */
-          /* Desktop panel wrappers must be visible on mobile so their inner tab views can toggle */
-          #panel-chat, #panel-pipeline, #panel-analytics {
-            display: flex !important;
-            flex-direction: column !important;
-            padding: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-          }
-
-          /* Hide all views by default on mobile */
+          /* --- 3. View Switcher Formatting (Fixing the Bottom-Push Bug) --- */
           .tab-content-view {
-            display: none !important;
+            display: none !important; 
             padding: 16px !important;
-            animation: fadeIn 0.25s ease-in-out forwards;
+            padding-bottom: 90px !important; /* Extra room for chat input */
+            margin: 0 !important;
             width: 100% !important;
-            height: 100% !important;
-            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100% !important;
+            
+            /* STRONGLY override any desktop flex alignment pushing content down */
+            flex-direction: column !important;
+            justify-content: flex-start !important; 
+            align-items: stretch !important;
+            align-content: flex-start !important;
           }
 
-          /* Only render active view */
+          /* When active, show as flex but forced to the top */
           .tab-content-view.mobile-active-view {
-            display: block !important;
+            display: flex !important; 
+            animation: fadeIn 0.2s ease-in-out forwards;
           }
 
           @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
           }
 
-          /* --- 4. Cards & Mobile Micro-Components --- */
-          .card, .panel, .analysis-box, #corpus-directory-card, .rounded-xl {
-            background: #0f172a !important;
-            border: 1px solid #1e293b !important;
-            border-radius: 14px !important;
-            padding: 16px !important;
-            margin-bottom: 14px !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
-          }
-
-          .prompt-card {
-            background: #111a2e !important;
-            border: 1px solid #1e2d4a !important;
-            border-radius: 12px !important;
-            padding: 14px 16px !important;
-            color: #38bdf8 !important;
-            font-size: 14px !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            margin-bottom: 10px !important;
-            cursor: pointer;
-          }
-
-          /* Sticky Chat Input at Bottom */
-          .chat-input-wrapper, #chat-form {
+          /* --- 4. Chat Input Strict Anchoring --- */
+          .chat-input-wrapper {
             position: fixed !important;
-            bottom: 65px !important;
+            bottom: 70px !important; /* Anchored exactly 10px above the bottom nav */
             left: 12px !important;
             right: 12px !important;
-            background: rgba(15, 23, 42, 0.95) !important;
+            background: rgba(15, 23, 42, 0.98) !important;
             border: 1px solid #1e293b !important;
             border-radius: 24px !important;
-            padding: 8px 16px !important;
+            padding: 10px 16px !important;
             display: flex !important;
             align-items: center !important;
             gap: 10px !important;
             z-index: 900 !important;
-            backdrop-filter: blur(8px) !important;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4) !important; /* Subtle shadow to separate from background */
+            margin: 0 !important;
           }
 
-          #chat-form input, #chat-form textarea {
+          .chat-input-wrapper input {
             background: transparent !important;
             border: none !important;
             color: #f8fafc !important;
             outline: none !important;
             width: 100% !important;
-            font-size: 14px !important;
-            box-shadow: none !important;
+            font-size: 16px !important; /* 16px prevents iOS from auto-zooming */
           }
 
           /* --- 5. Fixed App Bottom Navigation Bar --- */
@@ -236,6 +197,8 @@
             align-items: center !important;
             justify-content: space-around !important;
             z-index: 1000 !important;
+            padding-bottom: env(safe-area-inset-bottom) !important; /* Prevents overlap with iPhone/Android home bar */
+            margin: 0 !important;
           }
 
           .nav-tab-item {
@@ -251,7 +214,6 @@
             width: 25% !important;
             height: 100% !important;
             position: relative;
-            transition: color 0.2s ease;
           }
 
           .nav-tab-item svg {
@@ -262,15 +224,8 @@
             stroke-width: 2;
           }
 
-          /* Active Mobile Tab Visual Highlights */
-          .nav-tab-item.active {
-            color: #10b981 !important;
-          }
-
-          .nav-tab-item.active svg {
-            stroke: #10b981 !important;
-          }
-
+          .nav-tab-item.active { color: #10b981 !important; }
+          .nav-tab-item.active svg { stroke: #10b981 !important; }
           .nav-tab-item.active::before {
             content: '' !important;
             position: absolute !important;
@@ -279,85 +234,46 @@
             height: 3px !important;
             background: #10b981 !important;
             border-radius: 0 0 4px 4px !important;
-            box-shadow: 0 0 10px #10b981 !important;
           }
 
-          /* --- 6. Navigation Matrix Slide-Over Drawer --- */
-          .mobile-drawer-overlay {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            background: rgba(0, 0, 0, 0.7) !important;
-            backdrop-filter: blur(6px) !important;
-            z-index: 1100 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            transition: opacity 0.3s ease !important;
+          /* --- 6. Card & Component Resets --- */
+          .card, .panel, .analysis-box, #corpus-directory-card, .rounded-xl {
+            background: #0f172a !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 14px !important;
+            padding: 16px !important;
+            margin-bottom: 14px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
           }
 
-          .mobile-drawer-overlay.active {
-            opacity: 1 !important;
-            pointer-events: auto !important;
+          /* --- 7. Native Touch Overrides --- */
+          * { -webkit-tap-highlight-color: transparent !important; }
+          button, .nav-tab-item, .prompt-card {
+            transition: transform 0.15s ease !important;
           }
-
-          .mobile-drawer-panel {
-            position: fixed !important;
-            top: 0 !important;
-            left: -85% !important;
-            width: 85% !important;
-            max-width: 320px !important;
-            height: 100% !important;
-            background: #0b101d !important;
-            border-right: 1px solid #1e293b !important;
-            z-index: 1200 !important;
-            padding: 20px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-            transition: left 0.3s ease-in-out !important;
-          }
-
-          .mobile-drawer-panel.active {
-            left: 0 !important;
-          }
-
-          /* Range Slider Styling */
-          .retrieval-slider {
-            width: 100%;
-            accent-color: #10b981;
-            background: #1e293b;
-            border-radius: 8px;
-            height: 6px;
-          }
-          /* --- 7. Native App Touch & Haptics --- */
-          
-          /* Disable the default blue tap highlight on mobile */
-          * {
-            -webkit-tap-highlight-color: transparent !important;
-          }
-
-          /* Add a physical "press" effect to buttons and cards */
-          button, 
-          .nav-tab-item,
-          .prompt-card,
-          .analysis-box {
-            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease !important;
-          }
-
-          /* When the user touches the screen, scale the element down slightly */
-          button:active, 
-          .nav-tab-item:active,
-          .prompt-card:active {
+          button:active, .nav-tab-item:active, .prompt-card:active {
             transform: scale(0.96) !important;
           }
-
-          /* Specifically target the SVG icons in the nav bar for the press effect */
-          .nav-tab-item:active svg {
-            transform: scale(0.92) !important;
-            transition: transform 0.1s ease !important;
+          
+          /* --- 8. Navigation Drawer Overlay --- */
+          .mobile-drawer-overlay {
+            position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            background: rgba(0, 0, 0, 0.7) !important; backdrop-filter: blur(6px) !important;
+            z-index: 1100 !important; opacity: 0 !important; pointer-events: none !important;
+            transition: opacity 0.3s ease !important;
           }
+          .mobile-drawer-overlay.active { opacity: 1 !important; pointer-events: auto !important; }
+
+          .mobile-drawer-panel {
+            position: fixed !important; top: 0 !important; left: -85% !important;
+            width: 85% !important; max-width: 320px !important; height: 100% !important;
+            background: #0b101d !important; border-right: 1px solid #1e293b !important;
+            z-index: 1200 !important; padding: 20px !important;
+            display: flex !important; flex-direction: column !important; justify-content: space-between !important;
+            transition: left 0.3s ease-in-out !important;
+          }
+          .mobile-drawer-panel.active { left: 0 !important; }
         }
 
         /* Hide Mobile Elements Completely on Desktop */
