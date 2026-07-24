@@ -96,28 +96,29 @@
         @media screen and (max-width: 768px) {
           
           /* --- 1. Global Viewport Lock --- */
-          html, body {
-            overflow-x: hidden !important;
+          html {
+            overflow: hidden !important;
+          }
+          body {
+            overflow: hidden !important;
             background-color: #080c14 !important;
             color: #f8fafc !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            height: 100% !important; 
-            position: relative !important;
-          }
-
-          body {
-            padding-top: 60px !important; /* Strict spacing for top header */
-            padding-bottom: 80px !important; /* Strict spacing for bottom nav */
-            display: block !important; /* Kill any body-level flexbox from desktop */
+            height: 100dvh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
           /* --- 2. Top Header Restraint --- */
           .header, header, #top-header {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
+            position: relative !important; /* Changed from fixed since we use flex body */
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
             height: 60px !important;
+            flex-shrink: 0 !important;
             background: rgba(8, 12, 20, 0.95) !important;
             backdrop-filter: blur(12px) !important;
             border-bottom: 1px solid #1e293b !important;
@@ -130,35 +131,40 @@
           }
 
           /* --- 3. View Switcher Formatting (Fixing the Bottom-Push Bug) --- */
+          /* Scrollable Main Viewport (CRITICAL) */
+          #mobile-scroll-stage {
+            flex-grow: 1 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            justify-content: flex-start !important;
+            align-items: flex-start !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+
           /* Ensure desktop panel wrappers do not hide our mobile views */
           #panel-chat, #panel-pipeline, #panel-analytics {
             display: flex !important;
             flex-direction: column !important;
             padding: 0 !important;
             width: 100% !important;
-            height: 100% !important;
             visibility: visible !important;
             opacity: 1 !important;
           }
+          
           .tab-content-view {
             display: none !important; 
             padding: 16px !important;
-            padding-bottom: 90px !important; /* Extra room for chat input */
             margin: 0 !important;
             width: 100% !important;
-            height: auto !important;
-            min-height: 100% !important;
-            
-            /* STRONGLY override any desktop flex alignment pushing content down */
-            flex-direction: column !important;
-            justify-content: flex-start !important; 
-            align-items: stretch !important;
-            align-content: flex-start !important;
           }
 
           /* When active, show as flex but forced to the top */
           .tab-content-view.mobile-active-view {
-            display: flex !important; 
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            margin-top: 0 !important;
             animation: fadeIn 0.2s ease-in-out forwards;
           }
 
@@ -429,7 +435,7 @@
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col overflow-hidden bg-[#0a0d1a] relative">
+        <main id="mobile-scroll-stage" class="flex-1 flex flex-col overflow-hidden bg-[#0a0d1a] relative">
             <section id="panel-chat" class="flex-1 flex flex-col overflow-hidden relative">
                 <div id="view-chat" class="tab-content-view mobile-active-view flex-1 flex flex-col overflow-hidden w-full h-full p-0! m-0!">
                 <!-- Chat Action Header -->
