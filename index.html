@@ -130,6 +130,16 @@
           }
 
           /* --- 3. View Switcher Formatting (Fixing the Bottom-Push Bug) --- */
+          /* Ensure desktop panel wrappers do not hide our mobile views */
+          #panel-chat, #panel-pipeline, #panel-analytics {
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
           .tab-content-view {
             display: none !important; 
             padding: 16px !important;
@@ -272,6 +282,7 @@
             z-index: 1200 !important; padding: 20px !important;
             display: flex !important; flex-direction: column !important; justify-content: space-between !important;
             transition: left 0.3s ease-in-out !important;
+            pointer-events: auto !important;
           }
           .mobile-drawer-panel.active { left: 0 !important; }
         }
@@ -305,12 +316,13 @@
             </div>
         </div>
 
-        <div class="flex items-center space-x-4">
-            <!-- Active Status Badge (Mobile Only) -->
+        <!-- Right side: Active Badge and New Hamburger Menu -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <!-- Keep only THIS Active Status Badge -->
             <span class="status-badge-active md:hidden">• ACTIVE</span>
             
-            <!-- NEW: Hamburger Menu Button (Three Bars) -->
-            <button id="mobile-menu-trigger" style="background: transparent; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; outline: none;">
+            <!-- Hamburger Menu Button -->
+            <button id="mobile-menu-trigger" class="md:hidden" style="background: transparent; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; outline: none;">
               <svg viewBox="0 0 24 24" width="26" height="26" stroke="#f8fafc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -318,7 +330,7 @@
               </svg>
             </button>
 
-            <!-- Desktop Connection Badge -->
+            <!-- Desktop Connection Badge (Hidden on Mobile) -->
             <div id="connection-badge"
                 class="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 transition-all duration-300">
                 <span class="relative flex h-2 w-2">
@@ -330,7 +342,7 @@
                     class="text-xs font-medium tracking-wide text-slate-300 uppercase mono">Connecting...</span>
             </div>
             
-            <!-- Desktop Settings Button -->
+            <!-- Desktop Settings Button (Hidden on Mobile) -->
             <button onclick="toggleSettingsModal()"
                 class="hidden md:flex p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">
                 <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -2094,21 +2106,32 @@
         item.addEventListener("click", (e) => {
           e.preventDefault();
           const targetViewId = item.getAttribute("data-target-view");
+          if (!targetViewId) return;
 
-          // Update Active Navigation Item
+          // 1. Strip active class from all nav items
           navItems.forEach((nav) => nav.classList.remove("active"));
+          // 2. Add active class to clicked item
           item.classList.add("active");
 
-          // Show Corresponding Mobile View
+          // 3. Force render the target view and hide peers
           tabViews.forEach((view) => {
             if (view.id === targetViewId) {
               view.classList.add("mobile-active-view");
+              // Bulletproof: Force display block via inline style to override any hidden state
+              view.style.setProperty("display", "flex", "important");
+              
+              // Also ensure parent section wrapper is visible if it exists
+              const parentSection = view.closest('section');
+              if (parentSection) {
+                  parentSection.style.setProperty("display", "flex", "important");
+              }
             } else {
               view.classList.remove("mobile-active-view");
+              view.style.removeProperty("display");
             }
           });
 
-          // Scroll smoothly to top on tab change
+          // 4. Scroll smoothly to top on tab change
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
       });
