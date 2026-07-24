@@ -3,7 +3,16 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- iOS & Android Web App Configuration -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Status Bar Theming for Chrome/Android -->
+    <meta name="theme-color" content="#080c14">
+
+    <!-- Prevent zoom on double-tap for a native feel -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vision 2030 Policy Intelligence Hub</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -321,6 +330,33 @@
             background: #1e293b;
             border-radius: 8px;
             height: 6px;
+          }
+          /* --- 7. Native App Touch & Haptics --- */
+          
+          /* Disable the default blue tap highlight on mobile */
+          * {
+            -webkit-tap-highlight-color: transparent !important;
+          }
+
+          /* Add a physical "press" effect to buttons and cards */
+          button, 
+          .nav-tab-item,
+          .prompt-card,
+          .analysis-box {
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease !important;
+          }
+
+          /* When the user touches the screen, scale the element down slightly */
+          button:active, 
+          .nav-tab-item:active,
+          .prompt-card:active {
+            transform: scale(0.96) !important;
+          }
+
+          /* Specifically target the SVG icons in the nav bar for the press effect */
+          .nav-tab-item:active svg {
+            transform: scale(0.92) !important;
+            transition: transform 0.1s ease !important;
           }
         }
 
