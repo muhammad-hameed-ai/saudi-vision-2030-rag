@@ -80,90 +80,257 @@
             margin-bottom: 0.25em;
         }
 
-        /* ==========================================
-           MOBILE & TABLET RESPONSIVE OVERRIDES
-           ========================================== */
-        @media (max-width: 768px) {
-          /* 0. Main Dashboard Layout - Stack Vertically */
-          body {
-            flex-direction: column !important;
+        /* ==========================================================================
+           SAUDI VISION 2030 - MOBILE RESPONSIVE ENGINE (MAX-WIDTH: 768PX)
+           ========================================================================== */
+
+        @media screen and (max-width: 768px) {
+          /* --- 1. Global Viewport Reset & Lock --- */
+          html, body {
             overflow-x: hidden !important;
+            background-color: #080c14 !important;
+            color: #f8fafc !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           }
 
-          /* 1. Force Header to Stack Vertically */
-          header { 
+          /* Main container padding compensation for top header & bottom nav */
+          body {
+            padding-top: 60px !important;
+            padding-bottom: 70px !important;
+          }
+
+          /* --- 2. Compact Mobile Header --- */
+          .header, header, #top-header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 60px !important;
+            background: rgba(8, 12, 20, 0.95) !important;
+            backdrop-filter: blur(12px) !important;
+            border-bottom: 1px solid #1e293b !important;
+            z-index: 1000 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 0 16px !important;
+          }
+
+          .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .status-badge-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+          }
+
+          /* --- 3. View Switcher (Tab Containers) --- */
+          /* Desktop panel wrappers must be visible on mobile so their inner tab views can toggle */
+          #panel-chat, #panel-pipeline, #panel-analytics {
             display: flex !important;
             flex-direction: column !important;
-            align-items: flex-start !important;
-            height: auto !important;
-            padding: 15px !important;
-            gap: 15px !important;
-          }
-
-          /* 2. Separate the Logo from the Badges */
-          header > div:last-child {
-            display: flex !important;
+            padding: 0 !important;
             width: 100% !important;
-            justify-content: flex-start !important;
-            gap: 10px !important;
-            margin-top: 5px !important;
+            height: 100% !important;
           }
 
-          /* 3. Fix the "Active Policy Analysis" Sub-Header Row */
-          #panel-chat > div:first-child { 
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            width: 100% !important;
-            gap: 12px !important;
-            margin-top: 10px !important;
-          }
-
-          /* 4. Make the Export Button Full Width on Mobile */
-          #panel-chat > div:first-child > button {
-            width: 100% !important;
-            justify-content: center !important;
-          }
-
-          /* 3. Collapse Grids to Single Column */
-          .grid, .grid-2-col, .grid-3-col, .architecture-cards {
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-          }
-
-          /* 4. Sidebar / Navigation Matrices */
-          .sidebar, .navigation-matrices {
-            width: 100% !important;
-            max-height: none !important;
-            border-right: none !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-          }
-
-          /* 5. Mobile-Optimized Typography & Cards */
-          h1, .brand-title {
-            font-size: 1.1rem !important;
-          }
-
-          .welcome-card, .console-box {
+          /* Hide all views by default on mobile */
+          .tab-content-view {
+            display: none !important;
             padding: 16px !important;
-            margin: 8px 0 !important;
-          }
-
-          /* 6. Sticky Chat Input Bar (Prevents Mobile Keyboard Clipping) */
-          .chat-input-container, .prompt-bar {
-            position: sticky !important;
-            bottom: 0 !important;
+            animation: fadeIn 0.25s ease-in-out forwards;
             width: 100% !important;
-            padding: 10px !important;
-            background: #0b0f19 !important; /* Match your dark bg */
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5) !important;
+            height: 100% !important;
+            overflow-y: auto !important;
           }
 
-          /* 7. Table Overflow Scrolling for Corpus Registry */
-          .table-container, .corpus-registry-table {
+          /* Only render active view */
+          .tab-content-view.mobile-active-view {
             display: block !important;
-            overflow-x: auto !important;
-            white-space: nowrap !important;
+          }
+
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          /* --- 4. Cards & Mobile Micro-Components --- */
+          .card, .panel, .analysis-box, #corpus-directory-card, .rounded-xl {
+            background: #0f172a !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 14px !important;
+            padding: 16px !important;
+            margin-bottom: 14px !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+          }
+
+          .prompt-card {
+            background: #111a2e !important;
+            border: 1px solid #1e2d4a !important;
+            border-radius: 12px !important;
+            padding: 14px 16px !important;
+            color: #38bdf8 !important;
+            font-size: 14px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-bottom: 10px !important;
+            cursor: pointer;
+          }
+
+          /* Sticky Chat Input at Bottom */
+          .chat-input-wrapper, #chat-form {
+            position: fixed !important;
+            bottom: 65px !important;
+            left: 12px !important;
+            right: 12px !important;
+            background: rgba(15, 23, 42, 0.95) !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 24px !important;
+            padding: 8px 16px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            z-index: 900 !important;
+            backdrop-filter: blur(8px) !important;
+          }
+
+          #chat-form input, #chat-form textarea {
+            background: transparent !important;
+            border: none !important;
+            color: #f8fafc !important;
+            outline: none !important;
+            width: 100% !important;
+            font-size: 14px !important;
+            box-shadow: none !important;
+          }
+
+          /* --- 5. Fixed App Bottom Navigation Bar --- */
+          .mobile-bottom-nav {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 60px !important;
+            background: #080c14 !important;
+            border-top: 1px solid #1e293b !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-around !important;
+            z-index: 1000 !important;
+          }
+
+          .nav-tab-item {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #64748b !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            gap: 4px !important;
+            width: 25% !important;
+            height: 100% !important;
+            position: relative;
+            transition: color 0.2s ease;
+          }
+
+          .nav-tab-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: #64748b;
+            fill: none;
+            stroke-width: 2;
+          }
+
+          /* Active Mobile Tab Visual Highlights */
+          .nav-tab-item.active {
+            color: #10b981 !important;
+          }
+
+          .nav-tab-item.active svg {
+            stroke: #10b981 !important;
+          }
+
+          .nav-tab-item.active::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            width: 32px !important;
+            height: 3px !important;
+            background: #10b981 !important;
+            border-radius: 0 0 4px 4px !important;
+            box-shadow: 0 0 10px #10b981 !important;
+          }
+
+          /* --- 6. Navigation Matrix Slide-Over Drawer --- */
+          .mobile-drawer-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(0, 0, 0, 0.7) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 1100 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.3s ease !important;
+          }
+
+          .mobile-drawer-overlay.active {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+          }
+
+          .mobile-drawer-panel {
+            position: fixed !important;
+            top: 0 !important;
+            left: -85% !important;
+            width: 85% !important;
+            max-width: 320px !important;
+            height: 100% !important;
+            background: #0b101d !important;
+            border-right: 1px solid #1e293b !important;
+            z-index: 1200 !important;
+            padding: 20px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            transition: left 0.3s ease-in-out !important;
+          }
+
+          .mobile-drawer-panel.active {
+            left: 0 !important;
+          }
+
+          /* Range Slider Styling */
+          .retrieval-slider {
+            width: 100%;
+            accent-color: #10b981;
+            background: #1e293b;
+            border-radius: 8px;
+            height: 6px;
+          }
+        }
+
+        /* Hide Mobile Elements Completely on Desktop */
+        @media screen and (min-width: 769px) {
+          .mobile-bottom-nav,
+          .mobile-drawer-overlay,
+          .mobile-drawer-panel,
+          #mobile-menu-trigger {
+            display: none !important;
           }
         }
     </style>
@@ -173,20 +340,24 @@
     class="bg-[#060814] text-slate-100 h-screen overflow-hidden flex flex-col antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
 
     <header
-        class="border-b border-slate-800/60 bg-[#090d1a]/80 backdrop-blur-md sticky top-0 z-40 px-6 h-16 shrink-0 flex items-center justify-between shadow-sm">
-        <div class="flex items-center space-x-3">
+        class="border-b border-slate-800/60 bg-[#090d1a]/80 backdrop-blur-md sticky top-0 z-40 px-6 h-16 shrink-0 flex items-center justify-between shadow-sm header">
+        <div class="flex items-center space-x-3 header-title-group">
             <div
                 class="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10 ring-1 ring-white/10">
                 <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
             </div>
             <div>
                 <h1 class="text-sm font-semibold tracking-wide uppercase text-slate-200">Vision 2030</h1>
-                <p class="text-[11px] text-slate-400 font-medium tracking-wider uppercase">Policy Intelligence Pipeline
+                <p class="text-[11px] text-slate-400 font-medium tracking-wider uppercase hidden md:block">Policy Intelligence Pipeline
                 </p>
             </div>
+            <span class="status-badge-active md:hidden">• ACTIVE</span>
         </div>
 
         <div class="flex items-center space-x-4">
+            <button id="mobile-menu-trigger" class="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 cursor-pointer">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
             <div id="connection-badge"
                 class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 transition-all duration-300">
                 <span class="relative flex h-2 w-2">
@@ -285,7 +456,7 @@
 
         <main class="flex-1 flex flex-col overflow-hidden bg-[#0a0d1a] relative">
             <section id="panel-chat" class="flex-1 flex flex-col overflow-hidden relative">
-
+                <div id="view-chat" class="tab-content-view mobile-active-view flex-1 flex flex-col overflow-hidden w-full h-full p-0! m-0!">
                 <!-- Chat Action Header -->
                 <div
                     class="flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a] shrink-0">
@@ -356,9 +527,11 @@
                             possible. Always verify cited policy metrics.</p>
                     </div>
                 </div>
+                </div>
             </section>
 
             <section id="panel-pipeline" class="flex-1 overflow-y-auto p-6 hidden">
+                <div id="view-pipeline" class="tab-content-view">
                 <div class="max-w-4xl mx-auto space-y-6">
                     <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
                         <div>
@@ -446,8 +619,10 @@
                                 </div>
                             </div>
                         </div>
+                        </div>
 
                         <!-- CORPUS REGISTRY & CONTROL CENTER -->
+                        <div id="view-registry" class="tab-content-view">
                         <div id="corpus-directory-card" class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2">
                             <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
                                 <div class="flex items-center space-x-2">
@@ -475,6 +650,7 @@
                                 </table>
                             </div>
                         </div>
+                        </div>
 
                     </div>
                 </div>
@@ -482,6 +658,7 @@
 
             <!-- ANALYTICS DASHBOARD (Chart.js) -->
             <section id="panel-analytics" class="flex-1 overflow-y-auto p-6 hidden">
+                <div id="view-analytics" class="tab-content-view">
                 <div class="max-w-5xl mx-auto space-y-6">
                     <div class="border-b border-slate-800/60 pb-4">
                         <h2 class="text-lg font-semibold text-slate-200">System Telemetry & Health</h2>
@@ -541,6 +718,7 @@
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </section>
         </main>
@@ -1893,6 +2071,132 @@
             Undo
         </button>
     </div>
+
+    <!-- Fixed Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+      <a href="#" class="nav-tab-item active" data-target-view="view-chat">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span>Chat</span>
+      </a>
+      <a href="#" class="nav-tab-item" data-target-view="view-pipeline">
+        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="8" height="8" rx="1"></rect><rect x="14" y="2" width="8" height="8" rx="1"></rect><rect x="2" y="14" width="8" height="8" rx="1"></rect><rect x="14" y="14" width="8" height="8" rx="1"></rect></svg>
+        <span>Pipeline</span>
+      </a>
+      <a href="#" class="nav-tab-item" data-target-view="view-registry">
+        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        <span>Registry</span>
+      </a>
+      <a href="#" class="nav-tab-item" data-target-view="view-analytics">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Analytics</span>
+      </a>
+    </nav>
+
+    <!-- Navigation Matrix Overlay & Drawer -->
+    <div id="mobile-drawer-overlay" class="mobile-drawer-overlay"></div>
+
+    <aside id="mobile-drawer-panel" class="mobile-drawer-panel">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <span style="font-size: 12px; font-weight: 800; color: #10b981; letter-spacing: 1px;">NAVIGATION MATRIX</span>
+          <button id="mobile-drawer-close" style="background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+
+        <!-- Analytical Session Shortcuts -->
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 10px; color: #64748b; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 12px;">ANALYTICAL SESSIONS</span>
+          <button onclick="createNewSession(); document.getElementById('mobile-drawer-close').click();" style="width: 100%; padding: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 8px; font-weight: 600; margin-bottom: 12px; cursor: pointer;">+ New Session</button>
+          <div style="color: #94a3b8; font-size: 13px; padding: 8px 0; border-bottom: 1px solid #1e293b;">💬 what is vision 2030</div>
+          <div style="color: #94a3b8; font-size: 13px; padding: 8px 0;">💬 housing program goals</div>
+        </div>
+      </div>
+
+      <!-- Retrieval Depth Control Widget -->
+      <div style="background: #0f172a; border: 1px solid #1e293b; padding: 16px; border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 8px;">
+          <span>RETRIEVAL DEPTH</span>
+          <span id="retrieval-depth-value" style="color: #10b981;">3</span>
+        </div>
+        <input type="range" id="retrieval-depth-slider" class="retrieval-slider" min="1" max="10" value="3">
+      </div>
+    </aside>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Mobile View Switcher (Chat, Pipeline, Registry, Analytics)
+      const navItems = document.querySelectorAll(".nav-tab-item");
+      const tabViews = document.querySelectorAll(".tab-content-view");
+
+      navItems.forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.preventDefault();
+          const targetViewId = item.getAttribute("data-target-view");
+
+          // Update Active Navigation Item
+          navItems.forEach((nav) => nav.classList.remove("active"));
+          item.classList.add("active");
+
+          // Show Corresponding Mobile View
+          tabViews.forEach((view) => {
+            if (view.id === targetViewId) {
+              view.classList.add("mobile-active-view");
+            } else {
+              view.classList.remove("mobile-active-view");
+            }
+          });
+
+          // Scroll smoothly to top on tab change
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+
+      // Mobile Drawer (Navigation Matrix) Toggle Logic
+      const hamburgerBtn = document.querySelector("#mobile-menu-trigger");
+      const drawerOverlay = document.querySelector("#mobile-drawer-overlay");
+      const drawerPanel = document.querySelector("#mobile-drawer-panel");
+      const closeDrawerBtn = document.querySelector("#mobile-drawer-close");
+
+      function openMobileDrawer() {
+        if (drawerOverlay && drawerPanel) {
+          drawerOverlay.classList.add("active");
+          drawerPanel.classList.add("active");
+        }
+      }
+
+      function closeMobileDrawer() {
+        if (drawerOverlay && drawerPanel) {
+          drawerOverlay.classList.remove("active");
+          drawerPanel.classList.remove("active");
+        }
+      }
+
+      if (hamburgerBtn) hamburgerBtn.addEventListener("click", openMobileDrawer);
+      if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeMobileDrawer);
+      if (drawerOverlay) drawerOverlay.addEventListener("click", closeMobileDrawer);
+
+      // Synchronize Retrieval Depth Slider Value
+      const depthSlider = document.querySelector("#retrieval-depth-slider");
+      const depthValueDisplay = document.querySelector("#retrieval-depth-value");
+      const desktopSlider = document.querySelector("#param-k");
+
+      if (depthSlider && depthValueDisplay) {
+        // Sync initial value
+        if (desktopSlider) {
+          depthSlider.value = desktopSlider.value;
+          depthValueDisplay.textContent = depthSlider.value;
+        }
+
+        depthSlider.addEventListener("input", (e) => {
+          depthValueDisplay.textContent = e.target.value;
+          if (desktopSlider) {
+            desktopSlider.value = e.target.value;
+            // update UI label on desktop as well
+            if (typeof updateKValText === 'function') updateKValText(e.target.value);
+          }
+        });
+      }
+    });
+    </script>
 </body>
 
 </html>
