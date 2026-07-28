@@ -10,18 +10,14 @@
 
     <!-- Status Bar Theming for Chrome/Android -->
     <meta name="theme-color" content="#080c14">
-
-    <!-- Prevent zoom on double-tap for a native feel -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Vision 2030 Policy Intelligence Hub</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
-
-    <!-- Chart.js for Telemetry -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,6 +27,9 @@
         rel="stylesheet">
 
     <style>
+        /* ==========================================================================
+           GLOBAL TOKENS & RESET
+           ========================================================================== */
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -39,11 +38,20 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* CSS SAFETY NET */
-        html, body, #root { height: 100%; margin: 0; padding: 0; }
-        * { min-width: 0; }
-        
-        /* Custom scrollbar for webkit browsers */
+        /* CSS SAFETY NET - The Ultimate Flexbox Anchor */
+        html,
+        body,
+        #root {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        * {
+            min-width: 0;
+        }
+
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -62,7 +70,6 @@
             background: #334155;
         }
 
-        /* Markdown Prose Styling */
         .prose p {
             margin-bottom: 0.75em;
             line-height: 1.6;
@@ -94,488 +101,439 @@
         }
 
         /* ==========================================================================
-           SAUDI VISION 2030 - MOBILE & TABLET UNIVERSAL APP SHELL FIX
-           Targets both small (< 640px) and medium tablet screens (640px to 1024px)
+           SAUDI VISION 2030 - MASTER MOBILE LAYOUT ARCHITECTURE
            ========================================================================== */
-
         @media screen and (max-width: 1024px) {
 
-          /* =============================================
-             LAYER 1: APP SHELL VIEWPORT LOCK
-             ============================================= */
-          html {
-            overflow: hidden !important;
-            height: 100% !important;
-            width: 100vw !important;
-          }
-          body {
-            overflow: hidden !important;
-            background-color: #080c14 !important;
-            color: #f8fafc !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-            height: 100dvh !important;
-            height: 100vh !important; /* fallback */
-            width: 100vw !important;
-            display: flex !important;
-            flex-direction: column !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
+            /* LAYER 1: APP SHELL VIEWPORT LOCK */
+            html {
+                overflow: hidden !important;
+                height: 100% !important;
+                width: 100vw !important;
+            }
 
-          /* Kill the desktop flex wrapper that holds aside + main */
-          body > .flex.flex-1.overflow-hidden {
-            display: contents !important;
-          }
+            body {
+                overflow: hidden !important;
+                background-color: #080c14 !important;
+                color: #f8fafc !important;
+                height: 100dvh !important;
+                width: 100vw !important;
+                display: flex !important;
+                flex-direction: column !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
 
-          /* Hide the desktop sidebar completely */
-          body > .flex > aside {
-            display: none !important;
-          }
+            /* CRITICAL FIX: Replaced buggy display: contents with a strict flex column */
+            body>.flex.flex-1.overflow-hidden {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+                height: 100% !important;
+                flex: 1 !important;
+                min-height: 0 !important;
+            }
 
-          /* Force-hide desktop-only header elements on mobile */
-          #connection-badge,
-          #top-header button[onclick="toggleSettingsModal()"] {
-            display: none !important;
-          }
+            body>.flex>aside {
+                display: none !important;
+            }
 
-          /* =============================================
-             LAYER 2: FIXED TOP HEADER (60px)
-             ============================================= */
-          #top-header, .header, header {
-            position: relative !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            height: 60px !important;
-            min-height: 60px !important;
-            max-height: 60px !important;
-            flex-shrink: 0 !important;
-            background: #090d1a !important;
-            backdrop-filter: blur(12px) !important;
-            border-bottom: 1px solid #1e293b !important;
-            z-index: 1000 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            padding: 0 16px !important;
-            margin: 0 !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-          }
+            #connection-badge,
+            #top-header button[onclick="toggleSettingsModal()"] {
+                display: none !important;
+            }
 
-          /* Show subtitle on mobile (matches Figma) */
-          #top-header .header-title-group p.hidden {
-            display: block !important;
-            font-size: 9px !important;
-            color: #64748b !important;
-            letter-spacing: 1.5px !important;
-            margin-top: 1px !important;
-          }
+            /* LAYER 2: FIXED TOP HEADER */
+            #top-header,
+            .header,
+            header {
+                position: relative !important;
+                height: 60px !important;
+                min-height: 60px !important;
+                flex-shrink: 0 !important;
+                background: #090d1a !important;
+                backdrop-filter: blur(12px) !important;
+                border-bottom: 1px solid #1e293b !important;
+                z-index: 1000 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                padding: 0 16px !important;
+                padding-top: env(safe-area-inset-top) !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
 
-          /* Header title sizing */
-          #top-header .header-title-group h1 {
-            font-size: 14px !important;
-            letter-spacing: 0.5px !important;
-          }
+            #top-header .header-title-group p.hidden {
+                display: block !important;
+                font-size: 9px !important;
+                color: #64748b !important;
+                letter-spacing: 1.5px !important;
+                margin-top: 1px !important;
+            }
 
-          /* Status badge styling */
-          .status-badge-active {
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 4px !important;
-            background: rgba(16, 185, 129, 0.15) !important;
-            color: #10b981 !important;
-            border: 1px solid rgba(16, 185, 129, 0.3) !important;
-            border-radius: 20px !important;
-            padding: 4px 12px !important;
-            font-size: 10px !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.5px !important;
-            white-space: nowrap !important;
-          }
+            #top-header .header-title-group h1 {
+                font-size: 14px !important;
+                letter-spacing: 0.5px !important;
+            }
 
-           /* =============================================
-             LAYER 3: SCROLLABLE MAIN VIEWPORT
-             ============================================= */
-           /* mobile-scroll-stage and panel rules have been moved strictly to HTML Tailwind classes */
+            /* LAYER 3: SCROLLABLE MAIN VIEWPORT */
+            /* CRITICAL FIX: Ensure padding-bottom prevents the fixed nav from overlapping content */
+            #mobile-scroll-stage {
+                flex: 1 !important;
+                min-height: 0 !important;
+                position: relative !important;
+                width: 100% !important;
+                overflow: hidden !important;
+                padding-bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+            }
 
-          /* Kill desktop flex properties that push content down */
+            #panel-pipeline>.max-w-4xl,
+            #panel-pipeline>div>.max-w-4xl {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
 
-          /* The pipeline grid wrapper that contains both view-pipeline and view-registry */
-          #panel-pipeline > .max-w-4xl,
-          #panel-pipeline > div > .max-w-4xl {
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
+            .tab-content-view {
+                display: none !important;
+            }
 
-          /* Tab content view: hidden by default */
-          .tab-content-view {
-            display: none !important;
-          }
+            .tab-content-view.mobile-active-view {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 0 !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+                animation: mobileViewFadeIn 0.2s ease-out forwards !important;
+            }
 
-          /* Tab content view: visible when active */
-          .tab-content-view.mobile-active-view {
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            padding: 16px !important;
-            gap: 16px !important;
-            box-sizing: border-box !important;
-            animation: mobileViewFadeIn 0.2s ease-out forwards !important;
-          }
+            @keyframes mobileViewFadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(6px);
+                }
 
-          @keyframes mobileViewFadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
 
-          /* =============================================
-             LAYER 4: CHAT VIEW SPECIFIC
-             ============================================= */
-          /* Chat view needs special treatment - no padding so cards fill width */
-          #view-chat.mobile-active-view {
-            padding: 0 !important;
-            flex: 1 !important;
-            display: flex !important;
-            flex-direction: column !important;
-          }
+            /* LAYER 4: CHAT VIEW */
+            #view-chat.mobile-active-view {
+                padding: 0 !important;
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
 
-          /* Chat action header (Active Policy Analysis + Export Dossier) */
-          #view-chat > div:first-child {
-            padding: 10px 16px !important;
-            font-size: 11px !important;
-          }
+            #view-chat>div:first-child {
+                padding: 10px 16px !important;
+                font-size: 11px !important;
+            }
 
-          /* Chat thread scrollable area */
-          #chat-thread {
-            flex: 1 !important;
-            overflow-y: auto !important;
-            padding: 16px !important;
-            padding-bottom: 80px !important; /* Space for chat input */
-          }
+            #chat-thread {
+                flex: 1 !important;
+                min-height: 0 !important;
+                overflow-y: auto !important;
+                padding: 16px !important;
+            }
 
-          /* Chat input area is now handled purely via flex-shrink-0 in DOM */
-          #chat-form {
-            border-radius: 16px !important;
-          }
+            #chat-form {
+                border-radius: 16px !important;
+            }
 
-          #user-input {
-            font-size: 16px !important; /* Prevent iOS zoom */
-            padding: 12px 48px 12px 16px !important;
-          }
+            #user-input {
+                font-size: 16px !important;
+                padding: 12px 48px 12px 16px !important;
+            }
 
-          /* Chat disclaimer text */
-          #view-chat > div:last-child p.text-\[10px\] {
-            font-size: 9px !important;
-            padding: 4px 0 !important;
-          }
+            #view-chat>div:last-child p.text-\[10px\] {
+                font-size: 9px !important;
+                padding: 4px 0 !important;
+            }
 
-          /* Sample query cards inside system session */
-          #chat-thread .grid {
-            grid-template-columns: 1fr !important;
-            gap: 10px !important;
-          }
+            #chat-thread .grid {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+            }
 
-          /* =============================================
-             LAYER 5: PIPELINE VIEW
-             ============================================= */
-          #view-pipeline.mobile-active-view {
-            padding: 16px !important;
-          }
+            /* LAYER 5: PIPELINE & REGISTRY & ANALYTICS VIEWS */
+            #view-pipeline.mobile-active-view,
+            #view-registry.mobile-active-view,
+            #view-analytics.mobile-active-view {
+                padding: 16px !important;
+                overflow-y: auto !important;
+                flex: 1 !important;
+            }
 
-          #view-pipeline .max-w-4xl {
-            max-width: 100% !important;
-            margin: 0 !important;
-          }
+            #view-pipeline .max-w-4xl,
+            #view-analytics .max-w-5xl {
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
 
-          /* Pipeline header row */
-          #view-pipeline .flex.items-center.justify-between {
-            flex-wrap: wrap !important;
-            gap: 8px !important;
-          }
+            #view-pipeline .flex.items-center.justify-between {
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
 
-          /* Pipeline grid - single column */
-          #view-pipeline .grid {
-            grid-template-columns: 1fr !important;
-            gap: 14px !important;
-          }
+            #view-pipeline .grid,
+            #view-analytics .grid {
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+            }
 
-          /* Pipeline cards */
-          #view-pipeline .rounded-xl {
-            padding: 16px !important;
-            margin-bottom: 0 !important;
-          }
+            #view-pipeline .rounded-xl {
+                padding: 16px !important;
+                margin-bottom: 0 !important;
+            }
 
-          /* Ingestion drop zone */
-          #pdf-drop-zone {
-            padding: 20px !important;
-          }
+            #pdf-drop-zone {
+                padding: 20px !important;
+            }
 
-          /* =============================================
-             LAYER 6: REGISTRY VIEW
-             ============================================= */
-          #view-registry.mobile-active-view {
-            padding: 16px !important;
-          }
+            #view-registry h3 {
+                font-size: 11px !important;
+            }
 
-          /* Registry title */
-          #view-registry h3 {
-            font-size: 11px !important;
-          }
+            #view-registry #document-search {
+                width: 100% !important;
+                margin-top: 8px !important;
+            }
 
-          /* Registry search - full width */
-          #view-registry #document-search {
-            width: 100% !important;
-            margin-top: 8px !important;
-          }
+            #corpus-directory-card>div:first-child {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 8px !important;
+            }
 
-          /* Registry header layout - stack on mobile */
-          #corpus-directory-card > div:first-child {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 8px !important;
-          }
+            #corpus-directory-card table {
+                font-size: 12px !important;
+            }
 
-          /* Registry table - responsive */
-          #corpus-directory-card table {
-            font-size: 12px !important;
-          }
+            #corpus-directory-card th,
+            #corpus-directory-card td {
+                padding: 10px 6px !important;
+                white-space: normal !important;
+            }
 
-          #corpus-directory-card th,
-          #corpus-directory-card td {
-            padding: 10px 6px !important;
-            white-space: normal !important;
-          }
+            #view-analytics .h-48 {
+                height: 160px !important;
+            }
 
-          /* =============================================
-             LAYER 7: ANALYTICS VIEW
-             ============================================= */
-          #view-analytics.mobile-active-view {
-            padding: 16px !important;
-          }
+            #view-analytics .flex-col.md\:flex-row {
+                flex-direction: column !important;
+            }
 
-          #view-analytics .max-w-5xl {
-            max-width: 100% !important;
-            margin: 0 !important;
-          }
+            #view-analytics .w-full.md\:w-1\/2 {
+                width: 100% !important;
+            }
 
-          /* Analytics grid - single column */
-          #view-analytics .grid {
-            grid-template-columns: 1fr !important;
-            gap: 14px !important;
-          }
+            /* LAYER 8: FIXED BOTTOM NAVIGATION */
+            .mobile-bottom-nav {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: calc(60px + env(safe-area-inset-bottom)) !important;
+                background: rgba(8, 12, 20, 0.95) !important;
+                backdrop-filter: blur(10px) !important;
+                border-top: 1px solid #1e293b !important;
+                display: flex !important;
+                align-items: flex-start !important;
+                justify-content: space-around !important;
+                z-index: 1000 !important;
+                padding-bottom: env(safe-area-inset-bottom) !important;
+                margin: 0 !important;
+            }
 
-          /* Chart containers */
-          #view-analytics .h-48 {
-            height: 160px !important;
-          }
+            .nav-tab-item {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                color: #64748b !important;
+                font-size: 10px !important;
+                font-weight: 600 !important;
+                text-decoration: none !important;
+                gap: 3px !important;
+                width: 25% !important;
+                height: 60px !important;
+                position: relative !important;
+                letter-spacing: 0.3px !important;
+            }
 
-          /* Accuracy section - stack vertically */
-          #view-analytics .flex-col.md\:flex-row {
-            flex-direction: column !important;
-          }
+            .nav-tab-item svg {
+                width: 20px !important;
+                height: 20px !important;
+                stroke: #64748b !important;
+                fill: none !important;
+                stroke-width: 2 !important;
+            }
 
-          #view-analytics .w-full.md\:w-1\/2 {
-            width: 100% !important;
-          }
+            .nav-tab-item.active {
+                color: #10b981 !important;
+            }
 
-          /* =============================================
-             LAYER 8: FIXED BOTTOM NAVIGATION (60px)
-             ============================================= */
-          .mobile-bottom-nav {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            height: 60px !important;
-            min-height: 60px !important;
-            background: #080c14 !important;
-            border-top: 1px solid #1e293b !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-around !important;
-            z-index: 1000 !important;
-            padding-bottom: env(safe-area-inset-bottom) !important;
-            margin: 0 !important;
-          }
+            .nav-tab-item.active svg {
+                stroke: #10b981 !important;
+            }
 
-          .nav-tab-item {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            color: #64748b !important;
-            font-size: 10px !important;
-            font-weight: 600 !important;
-            text-decoration: none !important;
-            gap: 3px !important;
-            width: 25% !important;
-            height: 100% !important;
-            position: relative !important;
-            letter-spacing: 0.3px !important;
-          }
+            .nav-tab-item.active::before {
+                content: '' !important;
+                position: absolute !important;
+                top: 0 !important;
+                width: 32px !important;
+                height: 3px !important;
+                background: #10b981 !important;
+                border-radius: 0 0 4px 4px !important;
+            }
 
-          .nav-tab-item svg {
-            width: 20px !important;
-            height: 20px !important;
-            stroke: #64748b !important;
-            fill: none !important;
-            stroke-width: 2 !important;
-          }
+            /* LAYER 9: NAVIGATION DRAWER */
+            .mobile-drawer-overlay {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0, 0, 0, 0.6) !important;
+                backdrop-filter: blur(4px) !important;
+                z-index: 1100 !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transition: opacity 0.3s ease !important;
+            }
 
-          .nav-tab-item.active { color: #10b981 !important; }
-          .nav-tab-item.active svg { stroke: #10b981 !important; }
-          .nav-tab-item.active::before {
-            content: '' !important;
-            position: absolute !important;
-            top: 0 !important;
-            width: 32px !important;
-            height: 3px !important;
-            background: #10b981 !important;
-            border-radius: 0 0 4px 4px !important;
-          }
+            .mobile-drawer-overlay.active {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
 
-          /* =============================================
-             LAYER 9: NAVIGATION DRAWER (Z-INDEX: 1200)
-             ============================================= */
-          .mobile-drawer-overlay {
-            position: fixed !important;
-            top: 0 !important; left: 0 !important;
-            right: 0 !important; bottom: 0 !important;
-            background: rgba(0, 0, 0, 0.6) !important;
-            backdrop-filter: blur(4px) !important;
-            z-index: 1100 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            transition: opacity 0.3s ease !important;
-          }
-          .mobile-drawer-overlay.active {
-            opacity: 1 !important;
-            pointer-events: auto !important;
-          }
+            .mobile-drawer-panel {
+                position: fixed !important;
+                top: 0 !important;
+                left: -100% !important;
+                width: 85% !important;
+                max-width: 320px !important;
+                height: 100dvh !important;
+                background: #0a0f1e !important;
+                border-right: 1px solid #1e293b !important;
+                z-index: 1200 !important;
+                padding: 24px 20px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                pointer-events: auto !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
 
-          .mobile-drawer-panel {
-            position: fixed !important;
-            top: 0 !important;
-            left: -100% !important;
-            width: 85% !important;
-            max-width: 320px !important;
-            height: 100dvh !important;
-            height: 100vh !important;
-            background: #0a0f1e !important;
-            border-right: 1px solid #1e293b !important;
-            z-index: 1200 !important;
-            padding: 24px 20px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            pointer-events: auto !important;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-          }
-          .mobile-drawer-panel.active {
-            left: 0 !important;
-          }
+            .mobile-drawer-panel.active {
+                left: 0 !important;
+            }
 
-          /* Drawer navigation buttons */
-          .drawer-nav-btn {
-            display: flex !important;
-            align-items: center !important;
-            gap: 12px !important;
-            width: 100% !important;
-            padding: 10px 14px !important;
-            border-radius: 10px !important;
-            border: 1px solid transparent !important;
-            background: transparent !important;
-            color: #94a3b8 !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
-            cursor: pointer !important;
-            transition: all 0.15s ease !important;
-          }
-          .drawer-nav-btn.active {
-            background: rgba(16, 185, 129, 0.12) !important;
-            color: #10b981 !important;
-            border-color: rgba(16, 185, 129, 0.3) !important;
-          }
-          .drawer-nav-btn svg {
-            width: 16px !important;
-            height: 16px !important;
-            stroke-width: 2 !important;
-          }
+            .drawer-nav-btn {
+                display: flex !important;
+                align-items: center !important;
+                gap: 12px !important;
+                width: 100% !important;
+                padding: 10px 14px !important;
+                border-radius: 10px !important;
+                border: 1px solid transparent !important;
+                background: transparent !important;
+                color: #94a3b8 !important;
+                font-size: 13px !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                transition: all 0.15s ease !important;
+            }
 
-          /* Drawer session items */
-          .drawer-session-item {
-            display: flex !important;
-            align-items: center !important;
-            gap: 8px !important;
-            padding: 10px 0 !important;
-            border-bottom: 1px solid #1e293b40 !important;
-            color: #94a3b8 !important;
-            font-size: 13px !important;
-            cursor: pointer !important;
-          }
-          .drawer-session-item:last-child {
-            border-bottom: none !important;
-          }
-          .drawer-session-item.active {
-            color: #f8fafc !important;
-            font-weight: 600 !important;
-          }
+            .drawer-nav-btn.active {
+                background: rgba(16, 185, 129, 0.12) !important;
+                color: #10b981 !important;
+                border-color: rgba(16, 185, 129, 0.3) !important;
+            }
 
-          /* Retrieval depth slider in drawer */
-          .retrieval-slider {
-            width: 100% !important;
-            accent-color: #10b981 !important;
-            height: 4px !important;
-          }
+            .drawer-nav-btn svg {
+                width: 16px !important;
+                height: 16px !important;
+                stroke-width: 2 !important;
+            }
 
-          /* =============================================
-             LAYER 10: GLOBAL TOUCH & CARD POLISH
-             ============================================= */
-          * {
-            -webkit-tap-highlight-color: transparent !important;
-          }
-          button, a, .nav-tab-item {
-            transition: transform 0.12s ease !important;
-          }
-          button:active, a:active, .nav-tab-item:active {
-            transform: scale(0.97) !important;
-          }
+            .drawer-session-item {
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                padding: 10px 0 !important;
+                border-bottom: 1px solid #1e293b40 !important;
+                color: #94a3b8 !important;
+                font-size: 13px !important;
+                cursor: pointer !important;
+            }
 
-          /* Card normalization */
-          .rounded-xl {
-            border-radius: 14px !important;
-          }
+            .drawer-session-item:last-child {
+                border-bottom: none !important;
+            }
 
-          /* Max-width resets for mobile */
-          .max-w-3xl, .max-w-4xl, .max-w-5xl {
-            max-width: 100% !important;
-          }
+            .drawer-session-item.active {
+                color: #f8fafc !important;
+                font-weight: 600 !important;
+            }
 
-          /* Grid resets */
-          .grid.grid-cols-1.sm\:grid-cols-2 {
-            grid-template-columns: 1fr !important;
-          }
+            .retrieval-slider {
+                width: 100% !important;
+                accent-color: #10b981 !important;
+                height: 4px !important;
+            }
 
-          /* Col-span resets */
-          .col-span-1.lg\:col-span-2 {
-            grid-column: span 1 !important;
-          }
+            * {
+                -webkit-tap-highlight-color: transparent !important;
+            }
+
+            button,
+            a,
+            .nav-tab-item {
+                transition: transform 0.12s ease !important;
+            }
+
+            button:active,
+            a:active,
+            .nav-tab-item:active {
+                transform: scale(0.97) !important;
+            }
+
+            .rounded-xl {
+                border-radius: 14px !important;
+            }
+
+            .max-w-3xl,
+            .max-w-4xl,
+            .max-w-5xl {
+                max-width: 100% !important;
+            }
+
+            .grid.grid-cols-1.sm\:grid-cols-2 {
+                grid-template-columns: 1fr !important;
+            }
+
+            .col-span-1.lg\:col-span-2 {
+                grid-column: span 1 !important;
+            }
         }
 
-        /* Hide Mobile Elements Completely on Desktop */
         @media screen and (min-width: 769px) {
-          .mobile-bottom-nav,
-          .mobile-drawer-overlay,
-          .mobile-drawer-panel,
-          #mobile-menu-trigger {
-            display: none !important;
-          }
+
+            .mobile-bottom-nav,
+            .mobile-drawer-overlay,
+            .mobile-drawer-panel,
+            #mobile-menu-trigger {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -584,7 +542,7 @@
     class="bg-[#080c14] text-slate-100 flex flex-col h-[100dvh] w-full overflow-hidden antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
 
     <header id="top-header"
-        class="flex-none h-14 w-full flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] border-b border-white/10 bg-[#0b0f19] z-50 shrink-0 header">
+        class="flex-none h-14 w-full flex items-center justify-between px-4 border-b border-white/10 bg-[#0b0f19] z-50 shrink-0 header">
         <div class="flex items-center space-x-3 header-title-group">
             <div
                 class="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10 ring-1 ring-white/10">
@@ -592,32 +550,32 @@
             </div>
             <div>
                 <h1 class="text-sm font-semibold tracking-wide uppercase text-slate-200">Vision 2030</h1>
-                <p class="text-[11px] text-slate-400 font-medium tracking-wider uppercase hidden md:block">Policy Intelligence Pipeline
-                </p>
+                <p class="text-[11px] text-slate-400 font-medium tracking-wider uppercase hidden md:block">Policy
+                    Intelligence Pipeline</p>
             </div>
         </div>
 
-        <!-- Right side: Active Badge and Hamburger Menu -->
         <div class="flex items-center gap-3">
-            <!-- Unified Connection Badge -->
-            <div id="connection-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div id="connection-badge"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <span class="relative flex h-1.5 w-1.5">
-                    <span id="ping-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span id="ping-pulse"
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span id="status-dot" class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
                 <span id="status-text" class="uppercase mono tracking-wide text-[10px]">ACTIVE</span>
             </div>
-            
-            <!-- Hamburger Menu Button -->
-            <button id="mobile-menu-trigger" class="lg:hidden text-slate-400 hover:text-white p-1 outline-none flex items-center justify-center">
-              <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
+
+            <button id="mobile-menu-trigger"
+                class="lg:hidden text-slate-400 hover:text-white p-1 outline-none flex items-center justify-center">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
             </button>
-            
-            <!-- Desktop Settings Button (Hidden on Mobile) -->
+
             <button onclick="toggleSettingsModal()"
                 class="hidden md:flex p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">
                 <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -626,10 +584,8 @@
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-        <!-- FIXED SIDEBAR -->
         <aside
             class="w-72 border-r border-slate-800/60 bg-[#080b16] flex flex-col hidden lg:flex z-10 shrink-0 h-screen overflow-hidden">
-            <!-- Top Section (Navigation) -->
             <div class="p-4 shrink-0 space-y-2">
                 <p class="px-3 text-[10px] font-semibold text-slate-500 tracking-widest uppercase">Navigation Matrices
                 </p>
@@ -653,7 +609,6 @@
                 </nav>
             </div>
 
-            <!-- Middle Section (Sessions) -->
             <div class="flex-1 flex flex-col min-h-0">
                 <div class="px-4 shrink-0 space-y-3 mb-3">
                     <p class="px-3 text-[10px] font-semibold text-slate-500 tracking-widest uppercase">Analytical
@@ -671,16 +626,11 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- SCROLLABLE LIST ONLY -->
                 <div class="flex-1 overflow-y-auto px-7 pb-4">
-                    <ul id="session-list" class="space-y-1">
-                        <!-- Populated by JS -->
-                    </ul>
+                    <ul id="session-list" class="space-y-1"></ul>
                 </div>
             </div>
 
-            <!-- Bottom Section (Target Config) -->
             <div class="p-3 border-t border-slate-800/60 shrink-0 space-y-3 bg-[#080b16]">
                 <div class="space-y-1.5">
                     <div class="px-1 flex justify-between items-center">
@@ -694,7 +644,6 @@
                             class="w-full accent-emerald-500 bg-slate-800 rounded-md h-1 appearance-none cursor-pointer">
                     </div>
                 </div>
-
                 <div class="p-2 rounded-md bg-slate-900/40 border border-slate-800/60 text-center">
                     <p class="text-[9px] text-slate-500 font-medium uppercase tracking-wider">Target Isolation Engine
                     </p>
@@ -704,277 +653,289 @@
             </div>
         </aside>
 
-        <main id="mobile-scroll-stage" class="flex-1 min-h-0 relative overflow-hidden w-full flex flex-col items-stretch">
+        <main id="mobile-scroll-stage"
+            class="flex-1 min-h-0 relative overflow-hidden w-full flex flex-col items-stretch">
+
             <section id="panel-chat" class="absolute inset-0 flex flex-col min-h-0 w-full">
-                <div id="view-chat" class="tab-content-view mobile-active-view flex flex-col w-full h-full min-h-0 p-0! m-0!">
-                <!-- Chat Action Header -->
-                <div
-                    class="flex-shrink-0 flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a]">
-                    <div class="flex items-center space-x-2 text-slate-300">
-                        <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
-                        <span class="text-xs font-semibold uppercase tracking-wider">Active Policy Analysis</span>
-                    </div>
-                    <button onclick="exportDossier()"
-                        class="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 hover:bg-slate-800 text-xs text-slate-300 transition-all cursor-pointer shadow-sm group">
-                        <i data-lucide="download"
-                            class="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-y-0.5 transition-transform"></i>
-                        <span class="font-medium">Export Dossier</span>
-                    </button>
-                </div>
-
-                <!-- SCROLLABLE CHAT THREAD -->
-                <div id="chat-thread" class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 space-y-6 scroll-smooth">
+                <div id="view-chat"
+                    class="tab-content-view mobile-active-view flex flex-col w-full h-full min-h-0 p-0! m-0!">
                     <div
-                        class="max-w-3xl mx-auto border border-emerald-900/30 bg-gradient-to-b from-[#0e1626] to-[#0a0d1a] rounded-xl p-6 shadow-xl space-y-4">
-                        <div class="flex items-center space-x-3 text-emerald-400">
-                            <i data-lucide="terminal-square" class="w-5 h-5"></i>
-                            <h2 class="text-sm font-semibold tracking-wider uppercase">System Session Activated</h2>
+                        class="flex-shrink-0 flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a]">
+                        <div class="flex items-center space-x-2 text-slate-300">
+                            <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="text-xs font-semibold uppercase tracking-wider">Active Policy Analysis</span>
                         </div>
-                        <p class="text-sm text-slate-300 leading-relaxed">
-                            Welcome to the standalone policy analytical console. This interface queries your local
-                            distributed <span
-                                class="text-emerald-400 font-medium border-b border-emerald-500/30 border-dashed pb-0.5">Qdrant
-                                Core</span> array and streams localized structural inference directly through <span
-                                class="text-teal-400 font-medium border-b border-teal-500/30 border-dashed pb-0.5">Llama
-                                3.2</span>.
-                        </p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/50">
-                            <button onclick="injectSampleQuery('What are the three main pillars of Saudi Vision 2030?')"
-                                class="text-left p-3 rounded-lg bg-slate-900/40 border border-slate-800 hover:border-emerald-500/50 text-xs text-slate-300 transition-all cursor-pointer group">
-                                <span
-                                    class="block text-emerald-500/70 font-semibold mb-1 uppercase tracking-wider text-[9px] group-hover:text-emerald-400 transition-colors">Direct
-                                    Query</span>
-                                "What are the three main pillars of Saudi Vision 2030?"
-                            </button>
-                            <button
-                                onclick="injectSampleQuery('What is the specific target for the unemployment rate by 2030?')"
-                                class="text-left p-3 rounded-lg bg-slate-900/40 border border-slate-800 hover:border-teal-500/50 text-xs text-slate-300 transition-all cursor-pointer group">
-                                <span
-                                    class="block text-teal-500/70 font-semibold mb-1 uppercase tracking-wider text-[9px] group-hover:text-teal-400 transition-colors">Metric
-                                    Analysis</span>
-                                "What is the specific target for the unemployment rate by 2030?"
-                            </button>
-                        </div>
+                        <button onclick="exportDossier()"
+                            class="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 hover:bg-slate-800 text-xs text-slate-300 transition-all cursor-pointer shadow-sm group">
+                            <i data-lucide="download"
+                                class="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-y-0.5 transition-transform"></i>
+                            <span class="font-medium">Export Dossier</span>
+                        </button>
                     </div>
-                </div>
 
-                <!-- STATIC INPUT AREA -->
-                <div
-                    class="flex-shrink-0 bg-gradient-to-t from-[#060814] via-[#080b16] to-transparent pt-4 pb-4 px-4 md:px-6 w-full z-50 border-t border-slate-800/50">
-                    <div class="max-w-3xl mx-auto">
-                        <form id="chat-form" onsubmit="submitQuery(event)"
-                            class="relative flex items-end bg-slate-900/80 backdrop-blur-md border border-slate-700/60 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/20 rounded-xl transition-all shadow-2xl">
-                            <textarea id="user-input" rows="1"
-                                placeholder="Query structural timelines, metrics, policies... (Shift+Enter for new line)"
-                                class="w-full bg-transparent px-4 py-3.5 pr-14 text-sm text-slate-100 placeholder-slate-500 outline-none resize-none overflow-hidden max-h-32"
-                                oninput="autoResize(this)" onkeydown="handleEnter(event)"></textarea>
-                            <button type="submit" id="send-btn"
-                                class="absolute right-2 bottom-2 p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                                <i data-lucide="send" class="w-4 h-4"></i>
-                            </button>
-                        </form>
-                        <p class="text-[10px] text-slate-500 text-center mt-2">Llama 3.2 processing. Hallucinations are
-                            possible. Always verify cited policy metrics.</p>
+                    <div id="chat-thread"
+                        class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 space-y-6 scroll-smooth">
+                        <div
+                            class="max-w-3xl mx-auto border border-emerald-900/30 bg-gradient-to-b from-[#0e1626] to-[#0a0d1a] rounded-xl p-6 shadow-xl space-y-4">
+                            <div class="flex items-center space-x-3 text-emerald-400">
+                                <i data-lucide="terminal-square" class="w-5 h-5"></i>
+                                <h2 class="text-sm font-semibold tracking-wider uppercase">System Session Activated</h2>
+                            </div>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                Welcome to the standalone policy analytical console. This interface queries your local
+                                distributed <span
+                                    class="text-emerald-400 font-medium border-b border-emerald-500/30 border-dashed pb-0.5">Qdrant
+                                    Core</span> array and streams localized structural inference directly through <span
+                                    class="text-teal-400 font-medium border-b border-teal-500/30 border-dashed pb-0.5">Llama
+                                    3.2</span>.
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/50">
+                                <button
+                                    onclick="injectSampleQuery('What are the three main pillars of Saudi Vision 2030?')"
+                                    class="text-left p-3 rounded-lg bg-slate-900/40 border border-slate-800 hover:border-emerald-500/50 text-xs text-slate-300 transition-all cursor-pointer group">
+                                    <span
+                                        class="block text-emerald-500/70 font-semibold mb-1 uppercase tracking-wider text-[9px] group-hover:text-emerald-400 transition-colors">Direct
+                                        Query</span>
+                                    "What are the three main pillars of Saudi Vision 2030?"
+                                </button>
+                                <button
+                                    onclick="injectSampleQuery('What is the specific target for the unemployment rate by 2030?')"
+                                    class="text-left p-3 rounded-lg bg-slate-900/40 border border-slate-800 hover:border-teal-500/50 text-xs text-slate-300 transition-all cursor-pointer group">
+                                    <span
+                                        class="block text-teal-500/70 font-semibold mb-1 uppercase tracking-wider text-[9px] group-hover:text-teal-400 transition-colors">Metric
+                                        Analysis</span>
+                                    "What is the specific target for the unemployment rate by 2030?"
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+
+                    <div
+                        class="flex-shrink-0 bg-gradient-to-t from-[#060814] via-[#080b16] to-transparent pt-4 pb-4 px-4 md:px-6 w-full z-50 border-t border-slate-800/50">
+                        <div class="max-w-3xl mx-auto">
+                            <form id="chat-form" onsubmit="submitQuery(event)"
+                                class="relative flex items-end bg-slate-900/80 backdrop-blur-md border border-slate-700/60 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/20 rounded-xl transition-all shadow-2xl">
+                                <textarea id="user-input" rows="1"
+                                    placeholder="Query structural timelines, metrics, policies... (Shift+Enter for new line)"
+                                    class="w-full bg-transparent px-4 py-3.5 pr-14 text-sm text-slate-100 placeholder-slate-500 outline-none resize-none overflow-hidden max-h-32"
+                                    oninput="autoResize(this)" onkeydown="handleEnter(event)"></textarea>
+                                <button type="submit" id="send-btn"
+                                    class="absolute right-2 bottom-2 p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                            <p class="text-[10px] text-slate-500 text-center mt-2">Llama 3.2 processing. Hallucinations
+                                are possible. Always verify cited policy metrics.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
             <section id="panel-pipeline" class="absolute inset-0 flex flex-col min-h-0 w-full hidden">
                 <div id="view-pipeline" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
-                <div class="max-w-4xl mx-auto space-y-6 w-full">
-                    <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
-                        <div>
-                            <h2 class="text-lg font-semibold text-slate-200">Pipeline Architecture</h2>
-                            <p class="text-xs text-slate-400 mt-1">Real-time parameters from the active backend
-                                configuration.</p>
-                        </div>
-                        <button onclick="syncPipelineTelemetry()"
-                            class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 flex items-center space-x-2 transition-colors cursor-pointer">
-                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                            <span>Sync Telemetry</span>
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        <div class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 space-y-5 shadow-sm">
-                            <div class="flex items-center space-x-2 border-b border-slate-800/50 pb-3">
-                                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-                                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Corpus & Index
-                                </h3>
+                    <div class="max-w-4xl mx-auto space-y-6 w-full">
+                        <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-200">Pipeline Architecture</h2>
+                                <p class="text-xs text-slate-400 mt-1">Real-time parameters from the active backend
+                                    configuration.</p>
                             </div>
-                            <div class="space-y-3">
-                                <div class="flex justify-between text-xs items-center"><span
-                                        class="text-slate-400">Document Loader</span><span id="pipe-loader"
-                                        class="font-medium text-slate-200 mono">--</span></div>
-                                <div class="flex justify-between text-xs items-center"><span class="text-slate-400">PDFs
-                                        Loaded</span><span id="pipe-docs"
-                                        class="font-medium text-slate-200 mono">--</span></div>
-                                <div class="flex justify-between text-xs items-center"><span
-                                        class="text-slate-400">Structure-Aware Chunks</span><span id="pipe-chunks"
-                                        class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold mono">--</span>
-                                </div>
-                                <div class="flex justify-between text-xs items-center"><span
-                                        class="text-slate-400">Vector Dimensions</span><span id="pipe-dims"
-                                        class="font-medium text-slate-200 mono">--</span></div>
-                            </div>
+                            <button onclick="syncPipelineTelemetry()"
+                                class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 flex items-center space-x-2 transition-colors cursor-pointer">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                <span>Sync Telemetry</span>
+                            </button>
                         </div>
 
-                        <div class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 space-y-5 shadow-sm">
-                            <div class="flex items-center space-x-2 border-b border-slate-800/50 pb-3">
-                                <i data-lucide="cpu" class="w-4 h-4 text-teal-400"></i>
-                                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Engine
-                                    Backplanes</h3>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="flex justify-between text-xs items-center"><span
-                                        class="text-slate-400">Embedding Engine</span><span id="pipe-embed"
-                                        class="font-medium text-slate-200 mono">--</span></div>
-                                <div class="flex justify-between text-xs items-center"><span
-                                        class="text-slate-400">Vector Storage</span><span id="pipe-db"
-                                        class="font-medium text-slate-200 mono">--</span></div>
-                                <div class="flex justify-between text-xs items-center"><span
-                                        class="text-slate-400">Distance Metric</span><span id="pipe-metric"
-                                        class="font-medium text-slate-200 mono">--</span></div>
-                                <div class="flex justify-between text-xs items-center"><span class="text-slate-400">LLM
-                                        Backbone</span><span id="pipe-llm"
-                                        class="px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 font-semibold mono">--</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 space-y-5 shadow-sm col-span-1 lg:col-span-2">
-                            <div class="flex items-center justify-between border-b border-slate-800/50 pb-3">
-                                <div class="flex items-center space-x-2">
-                                    <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-400"></i>
-                                    <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">In-Memory Indexing Console</h3>
-                                </div>
-                            </div>
-                            <div class="space-y-4">
-                                <div id="pdf-drop-zone" onclick="document.getElementById('pdf-file-input').click()" class="border-2 border-dashed border-slate-700/60 rounded-xl p-6 text-center hover:bg-slate-800/30 transition-colors cursor-pointer group">
-                                    <input type="file" id="pdf-file-input" accept=".pdf" class="hidden">
-                                    <div class="flex flex-col items-center space-y-2 pointer-events-none">
-                                        <i data-lucide="file-text" class="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                                        <p class="text-sm font-medium text-slate-300">Drag & Drop PDF or <span class="text-blue-400">Browse</span></p>
-                                        <p class="text-xs text-slate-500">Zero-disk RAM processing pipeline</p>
-                                    </div>
-                                </div>
-                                <div id="ingest-progress-container" class="hidden space-y-2">
-                                    <div class="flex justify-between text-xs">
-                                        <span id="ingest-status-text" class="text-slate-300 font-medium">Initializing...</span>
-                                    </div>
-                                    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                                        <div id="ingest-progress-fill" class="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        </div>
-
-                        <!-- CORPUS REGISTRY & CONTROL CENTER -->
-                        <div id="view-registry" class="tab-content-view">
-                        <div id="corpus-directory-card" class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2">
-                            <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
-                                <div class="flex items-center space-x-2">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            <div class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 space-y-5 shadow-sm">
+                                <div class="flex items-center space-x-2 border-b border-slate-800/50 pb-3">
                                     <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-                                    <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Corpus Registry & Control Center</h3>
+                                    <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Corpus &
+                                        Index</h3>
                                 </div>
-                                <div class="relative">
-                                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-500"></i>
-                                    <input type="text" id="document-search" placeholder="Search registry..." class="pl-8 pr-3 py-1.5 bg-slate-900/50 border border-slate-700/60 rounded-md text-xs text-slate-300 focus:outline-none focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 w-48">
+                                <div class="space-y-3">
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">Document Loader</span><span id="pipe-loader"
+                                            class="font-medium text-slate-200 mono">--</span></div>
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">PDFs Loaded</span><span id="pipe-docs"
+                                            class="font-medium text-slate-200 mono">--</span></div>
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">Structure-Aware Chunks</span><span id="pipe-chunks"
+                                            class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">Vector Dimensions</span><span id="pipe-dims"
+                                            class="font-medium text-slate-200 mono">--</span></div>
                                 </div>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-sm whitespace-nowrap">
-                                    <thead class="uppercase tracking-wider text-[10px] font-semibold text-slate-400 border-b border-slate-800/60">
-                                        <tr>
-                                            <th class="pb-3 px-2">Document Name</th>
-                                            <th class="pb-3 px-2 text-right">Total Chunks</th>
-                                            <th class="pb-3 px-2 text-center">Vector Status</th>
-                                            <th class="pb-3 px-2 text-center">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="registry-table-body" class="divide-y divide-slate-800/40 text-slate-300">
-                                        <!-- Rows injected via JS -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        </div>
 
+                            <div class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 space-y-5 shadow-sm">
+                                <div class="flex items-center space-x-2 border-b border-slate-800/50 pb-3">
+                                    <i data-lucide="cpu" class="w-4 h-4 text-teal-400"></i>
+                                    <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Engine
+                                        Backplanes</h3>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">Embedding Engine</span><span id="pipe-embed"
+                                            class="font-medium text-slate-200 mono">--</span></div>
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">Vector Storage</span><span id="pipe-db"
+                                            class="font-medium text-slate-200 mono">--</span></div>
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">Distance Metric</span><span id="pipe-metric"
+                                            class="font-medium text-slate-200 mono">--</span></div>
+                                    <div class="flex justify-between text-xs items-center"><span
+                                            class="text-slate-400">LLM Backbone</span><span id="pipe-llm"
+                                            class="px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 font-semibold mono">--</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 space-y-5 shadow-sm col-span-1 lg:col-span-2">
+                                <div class="flex items-center justify-between border-b border-slate-800/50 pb-3">
+                                    <div class="flex items-center space-x-2">
+                                        <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-400"></i>
+                                        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                                            In-Memory Indexing Console</h3>
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <div id="pdf-drop-zone" onclick="document.getElementById('pdf-file-input').click()"
+                                        class="border-2 border-dashed border-slate-700/60 rounded-xl p-6 text-center hover:bg-slate-800/30 transition-colors cursor-pointer group">
+                                        <input type="file" id="pdf-file-input" accept=".pdf" class="hidden">
+                                        <div class="flex flex-col items-center space-y-2 pointer-events-none">
+                                            <i data-lucide="file-text"
+                                                class="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                                            <p class="text-sm font-medium text-slate-300">Drag & Drop PDF or <span
+                                                    class="text-blue-400">Browse</span></p>
+                                            <p class="text-xs text-slate-500">Zero-disk RAM processing pipeline</p>
+                                        </div>
+                                    </div>
+                                    <div id="ingest-progress-container" class="hidden space-y-2">
+                                        <div class="flex justify-between text-xs">
+                                            <span id="ingest-status-text"
+                                                class="text-slate-300 font-medium">Initializing...</span>
+                                        </div>
+                                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                            <div id="ingest-progress-fill"
+                                                class="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+                                                style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-registry" class="tab-content-view">
+                    <div id="corpus-directory-card"
+                        class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2 max-w-4xl mx-auto w-full">
+                        <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Corpus
+                                    Registry & Control Center</h3>
+                            </div>
+                            <div class="relative">
+                                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-500"></i>
+                                <input type="text" id="document-search" placeholder="Search registry..."
+                                    class="pl-8 pr-3 py-1.5 bg-slate-900/50 border border-slate-700/60 rounded-md text-xs text-slate-300 focus:outline-none focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 w-48">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead
+                                    class="uppercase tracking-wider text-[10px] font-semibold text-slate-400 border-b border-slate-800/60">
+                                    <tr>
+                                        <th class="pb-3 px-2">Document Name</th>
+                                        <th class="pb-3 px-2 text-right">Total Chunks</th>
+                                        <th class="pb-3 px-2 text-center">Vector Status</th>
+                                        <th class="pb-3 px-2 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="registry-table-body" class="divide-y divide-slate-800/40 text-slate-300">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ANALYTICS DASHBOARD (Chart.js) -->
             <section id="panel-analytics" class="absolute inset-0 flex flex-col min-h-0 w-full hidden">
                 <div id="view-analytics" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
-                <div class="max-w-5xl mx-auto space-y-6 w-full">
-                    <div class="border-b border-slate-800/60 pb-4">
-                        <h2 class="text-lg font-semibold text-slate-200">System Telemetry & Health</h2>
-                        <p class="text-xs text-slate-400 mt-1">Live operational metrics and visualization dashboard.</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Server Pulse (Live Line Chart) -->
-                        <div
-                            class="p-5 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-sm font-semibold text-slate-200 flex items-center"><i
-                                        data-lucide="activity" class="w-4 h-4 mr-2 text-emerald-400"></i> Server Pulse
-                                    (Live Load)</h3>
-                                <span id="pulse-status"
-                                    class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 mono uppercase border border-emerald-500/20">ONLINE</span>
-                            </div>
-                            <div class="h-48 w-full">
-                                <canvas id="chart-pulse"></canvas>
-                            </div>
+                    <div class="max-w-5xl mx-auto space-y-6 w-full">
+                        <div class="border-b border-slate-800/60 pb-4">
+                            <h2 class="text-lg font-semibold text-slate-200">System Telemetry & Health</h2>
+                            <p class="text-xs text-slate-400 mt-1">Live operational metrics and visualization dashboard.
+                            </p>
                         </div>
 
-                        <!-- Latency Tracking (Bar Chart) -->
-                        <div class="p-5 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm">
-                            <h3 class="text-sm font-semibold text-slate-200 flex items-center mb-4"><i
-                                    data-lucide="bar-chart-2" class="w-4 h-4 mr-2 text-teal-400"></i> Request Latency
-                                Trend</h3>
-                            <div class="h-48 w-full">
-                                <canvas id="chart-latency"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Accuracy Radar/Donut Chart -->
-                        <div class="p-5 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm flex flex-col">
-                            <h3 class="text-sm font-semibold text-slate-200 flex items-center mb-4"><i
-                                    data-lucide="target" class="w-4 h-4 mr-2 text-amber-400"></i> System Accuracy</h3>
-                            <div class="flex-1 flex flex-col md:flex-row items-center gap-6">
-                                <div class="w-full md:w-1/2 h-40">
-                                    <canvas id="chart-accuracy"></canvas>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div
+                                class="p-5 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-sm font-semibold text-slate-200 flex items-center"><i
+                                            data-lucide="activity" class="w-4 h-4 mr-2 text-emerald-400"></i> Server
+                                        Pulse (Live Load)</h3>
+                                    <span id="pulse-status"
+                                        class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 mono uppercase border border-emerald-500/20">ONLINE</span>
                                 </div>
-                                <div class="w-full md:w-1/2 space-y-4">
-                                    <div
-                                        class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center md:text-left">
-                                        <p
-                                            class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">
-                                            Faithfulness Score</p>
-                                        <p id="stat-faithfulness" class="text-2xl font-bold text-emerald-400 mono">94.2%</p>
-                                    </div>
-                                    <div
-                                        class="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-center md:text-left">
-                                        <p
-                                            class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">
-                                            Context Relevance</p>
-                                        <p id="stat-relevance" class="text-2xl font-bold text-teal-400 mono">89.5%</p>
-                                    </div>
+                                <div class="h-48 w-full">
+                                    <canvas id="chart-pulse"></canvas>
                                 </div>
                             </div>
+
+                            <div class="p-5 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm">
+                                <h3 class="text-sm font-semibold text-slate-200 flex items-center mb-4"><i
+                                        data-lucide="bar-chart-2" class="w-4 h-4 mr-2 text-teal-400"></i> Request
+                                    Latency Trend</h3>
+                                <div class="h-48 w-full">
+                                    <canvas id="chart-latency"></canvas>
+                                </div>
+                            </div>
+
+                            <div
+                                class="p-5 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm flex flex-col">
+                                <h3 class="text-sm font-semibold text-slate-200 flex items-center mb-4"><i
+                                        data-lucide="target" class="w-4 h-4 mr-2 text-amber-400"></i> System Accuracy
+                                </h3>
+                                <div class="flex-1 flex flex-col md:flex-row items-center gap-6">
+                                    <div class="w-full md:w-1/2 h-40">
+                                        <canvas id="chart-accuracy"></canvas>
+                                    </div>
+                                    <div class="w-full md:w-1/2 space-y-4">
+                                        <div
+                                            class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center md:text-left">
+                                            <p
+                                                class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">
+                                                Faithfulness Score</p>
+                                            <p id="stat-faithfulness" class="text-2xl font-bold text-emerald-400 mono">
+                                                94.2%</p>
+                                        </div>
+                                        <div
+                                            class="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-center md:text-left">
+                                            <p
+                                                class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">
+                                                Context Relevance</p>
+                                            <p id="stat-relevance" class="text-2xl font-bold text-teal-400 mono">89.5%
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- Settings Modal -->
+    <!-- Modals and Toasts -->
     <div id="settings-modal"
         class="fixed inset-0 bg-[#060814]/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 transition-opacity">
         <div class="w-full max-w-md rounded-2xl border border-slate-700/50 bg-[#0a0d1a] p-6 shadow-2xl space-y-5">
@@ -1002,10 +963,152 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+    <div id="toast-container" class="fixed bottom-24 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <div id="undo-toast"
+        class="fixed bottom-24 right-6 flex items-center space-x-4 bg-slate-900 border border-rose-500/40 text-slate-300 px-4 py-3 rounded-lg shadow-2xl transition-all duration-300 transform translate-y-full opacity-0 z-50">
+        <div class="flex items-center space-x-2">
+            <i data-lucide="trash" class="w-4 h-4 text-rose-400 animate-pulse"></i>
+            <span id="undo-toast-text" class="text-sm font-medium">Deleting...</span>
+        </div>
+        <div class="w-px h-4 bg-slate-700/60"></div>
+        <button id="undo-btn"
+            class="text-sm font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-wide transition-colors">Undo</button>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+        <a href="#" class="nav-tab-item active" data-target-view="view-chat">
+            <svg viewBox="0 0 24 24">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Chat</span>
+        </a>
+        <a href="#" class="nav-tab-item" data-target-view="view-pipeline">
+            <svg viewBox="0 0 24 24">
+                <rect x="2" y="2" width="8" height="8" rx="1"></rect>
+                <rect x="14" y="2" width="8" height="8" rx="1"></rect>
+                <rect x="2" y="14" width="8" height="8" rx="1"></rect>
+                <rect x="14" y="14" width="8" height="8" rx="1"></rect>
+            </svg>
+            <span>Pipeline</span>
+        </a>
+        <a href="#" class="nav-tab-item" data-target-view="view-registry">
+            <svg viewBox="0 0 24 24">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Registry</span>
+        </a>
+        <a href="#" class="nav-tab-item" data-target-view="view-analytics">
+            <svg viewBox="0 0 24 24">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Analytics</span>
+        </a>
+    </nav>
+
+    <!-- Navigation Drawer -->
+    <div id="mobile-drawer-overlay" class="mobile-drawer-overlay"></div>
+    <aside id="mobile-drawer-panel" class="mobile-drawer-panel">
+        <div style="flex: 1; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #14b8a6); display: flex; align-items: center; justify-content: center;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                    </div>
+                    <span
+                        style="font-size: 12px; font-weight: 800; color: #10b981; letter-spacing: 1.5px; text-transform: uppercase;">Navigation
+                        Matrix</span>
+                </div>
+                <button id="mobile-drawer-close"
+                    style="background: none; border: none; color: #64748b; font-size: 18px; cursor: pointer; padding: 4px;">✕</button>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <span
+                    style="font-size: 9px; color: #475569; font-weight: 700; letter-spacing: 1.5px; display: block; margin-bottom: 10px; text-transform: uppercase;">Navigation
+                    Matrices</span>
+                <div style="display: flex; flex-direction: column; gap: 4px;" id="drawer-nav-list">
+                    <button class="drawer-nav-btn active" data-drawer-target="view-chat"
+                        onclick="drawerSwitchTab(this, 'view-chat')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        AI Chat Intelligence
+                    </button>
+                    <button class="drawer-nav-btn" data-drawer-target="view-pipeline"
+                        onclick="drawerSwitchTab(this, 'view-pipeline')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                        Pipeline Engineering
+                    </button>
+                    <button class="drawer-nav-btn" data-drawer-target="view-registry"
+                        onclick="drawerSwitchTab(this, 'view-registry')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Corpus Registry
+                    </button>
+                    <button class="drawer-nav-btn" data-drawer-target="view-analytics"
+                        onclick="drawerSwitchTab(this, 'view-analytics')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <line x1="18" y1="20" x2="18" y2="10" />
+                            <line x1="12" y1="20" x2="12" y2="4" />
+                            <line x1="6" y1="20" x2="6" y2="14" />
+                        </svg>
+                        Analytics Engine
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <span
+                    style="font-size: 9px; color: #475569; font-weight: 700; letter-spacing: 1.5px; display: block; margin-bottom: 10px; text-transform: uppercase;">Analytical
+                    Sessions</span>
+                <button onclick="createNewSession(); refreshDrawerSessions();"
+                    style="width: 100%; padding: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 10px; font-weight: 600; font-size: 13px; margin-bottom: 10px; cursor: pointer;">+
+                    New Session</button>
+                <div style="position: relative; margin-bottom: 12px;">
+                    <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: #475569; fill: none; stroke-width: 2;"
+                        viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="drawer-session-search" placeholder="Search sessions..."
+                        style="width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 12px 9px 32px; color: #94a3b8; font-size: 12px; outline: none; box-sizing: border-box;">
+                </div>
+                <div id="drawer-session-list"></div>
+            </div>
+        </div>
+
+        <div
+            style="flex-shrink: 0; background: #0f172a; border: 1px solid #1e293b; padding: 16px; border-radius: 12px;">
+            <div
+                style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #475569; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                <span>Retrieval Depth</span>
+                <span id="retrieval-depth-value"
+                    style="color: #10b981; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); padding: 1px 8px; border-radius: 6px; font-size: 11px;">3</span>
+            </div>
+            <input type="range" id="retrieval-depth-slider" class="retrieval-slider" min="1" max="10" value="3"
+                style="width: 100%; accent-color: #10b981;">
+            <div
+                style="display: flex; justify-content: space-between; font-size: 9px; color: #334155; margin-top: 4px;">
+                <span>1</span>
+                <span>10</span>
+            </div>
+        </div>
+    </aside>
 
     <script>
+        // CORE JS ENGINE
         let BASE_BACKEND_URL = window.location.origin.startsWith("http") && !window.location.origin.includes("file://") ? window.location.origin : (localStorage.getItem("local_dashboard_backend") || "https://saudi-vision-2030-rag-3.onrender.com");
         let isServerActive = false;
         let isFirstQueryInSession = true;
@@ -1023,7 +1126,6 @@
                 }
                 this.currentSessionId = this.sessions[0].id;
             }
-
             loadSessions() {
                 try {
                     const data = localStorage.getItem(this.storageKey);
@@ -1032,7 +1134,6 @@
                     return [];
                 }
             }
-
             saveSessions() {
                 try {
                     localStorage.setItem(this.storageKey, JSON.stringify(this.sessions));
@@ -1040,24 +1141,14 @@
                     console.error("Failed to save sessions:", e);
                 }
             }
-
             createNewSession() {
                 const newId = 'session-' + Date.now();
-                this.sessions.unshift({
-                    id: newId,
-                    title: 'New Analysis',
-                    timestamp: new Date().toISOString(),
-                    messages: []
-                });
+                this.sessions.unshift({ id: newId, title: 'New Analysis', timestamp: new Date().toISOString(), messages: [] });
                 this.currentSessionId = newId;
                 this.saveSessions();
                 return newId;
             }
-
-            getSession(id) {
-                return this.sessions.find(s => s.id === id);
-            }
-
+            getSession(id) { return this.sessions.find(s => s.id === id); }
             deleteSession(id) {
                 const deleted = this.getSession(id);
                 this.sessions = this.sessions.filter(s => s.id !== id);
@@ -1068,43 +1159,28 @@
                 this.saveSessions();
                 return deleted;
             }
-
             addMessage(role, content, extra = {}) {
                 const session = this.getSession(this.currentSessionId);
                 if (session) {
                     if (session.messages.length === 0 && role === 'user') {
                         session.title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
                     }
-                    session.messages.push({
-                        id: 'msg-' + Date.now() + Math.random().toString(36).substring(7),
-                        role: role,
-                        content: content,
-                        ...extra
-                    });
+                    session.messages.push({ id: 'msg-' + Date.now() + Math.random().toString(36).substring(7), role: role, content: content, ...extra });
                     this.saveSessions();
                 }
             }
         }
 
         const sessionManager = new SessionManager();
-
         let pulseChart, latencyChart, accuracyChart;
         let pulseData = Array(30).fill(0);
-        let introCardHtml = null; // preserved intro block
+        let introCardHtml = null;
 
-        // Global escapeHtml helper
         function escapeHtml(unsafe) {
             if (!unsafe) return "";
-            return unsafe
-                .toString()
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return unsafe.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        // Safe marked API wrapper
         function safeMarked(text) {
             if (!text) return "";
             return (typeof marked.parse === 'function') ? marked.parse(text) : marked(text);
@@ -1112,18 +1188,15 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
-            
-            // Init Markdown safely
             if (typeof marked.use === 'function') {
                 marked.use({ breaks: true, gfm: true });
             } else if (typeof marked.setOptions === 'function') {
                 marked.setOptions({ breaks: true, gfm: true });
             }
-            
+
             document.getElementById("setting-backend-url").value = BASE_BACKEND_URL;
             document.getElementById("endpoint-label").innerText = BASE_BACKEND_URL;
 
-            // Preserve the intro card HTML before any session switches can destroy it
             const thread = document.getElementById('chat-thread');
             if (thread && thread.firstElementChild) {
                 introCardHtml = thread.firstElementChild.outerHTML;
@@ -1131,44 +1204,27 @@
 
             executeTelemetryCheck();
             setInterval(executeTelemetryCheck, 6000);
-
             syncPipelineTelemetry();
             renderSessions();
             initCharts();
-            setInterval(updatePulse, 1000); // Live heartbeat
+            setInterval(updatePulse, 1000);
 
-            // Drag and drop listeners
             const dropZone = document.getElementById("pdf-drop-zone");
             const fileInput = document.getElementById("pdf-file-input");
-            
             if (dropZone && fileInput) {
-                dropZone.addEventListener("dragover", (e) => {
-                    e.preventDefault();
-                    dropZone.classList.add("border-blue-500", "bg-slate-800/50");
-                });
-                
-                dropZone.addEventListener("dragleave", (e) => {
-                    e.preventDefault();
-                    dropZone.classList.remove("border-blue-500", "bg-slate-800/50");
-                });
-                
+                dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("border-blue-500", "bg-slate-800/50"); });
+                dropZone.addEventListener("dragleave", (e) => { e.preventDefault(); dropZone.classList.remove("border-blue-500", "bg-slate-800/50"); });
                 dropZone.addEventListener("drop", (e) => {
                     e.preventDefault();
                     dropZone.classList.remove("border-blue-500", "bg-slate-800/50");
-                    if (e.dataTransfer.files.length) {
-                        uploadAndStreamIngest(e.dataTransfer.files[0]);
-                    }
+                    if (e.dataTransfer.files.length) uploadAndStreamIngest(e.dataTransfer.files[0]);
                 });
-
                 fileInput.addEventListener("change", (e) => {
-                    if (e.target.files.length) {
-                        uploadAndStreamIngest(e.target.files[0]);
-                    }
+                    if (e.target.files.length) uploadAndStreamIngest(e.target.files[0]);
                 });
             }
         });
 
-        // UI Helpers
         function handleEnter(e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -1179,13 +1235,6 @@
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight < 128 ? textarea.scrollHeight : 128) + 'px';
-        }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('chat-form').dispatchEvent(new Event('submit', { cancelable: true }));
-            }
         }
 
         function toggleSettingsModal() { document.getElementById("settings-modal").classList.toggle("hidden"); }
@@ -1223,11 +1272,9 @@
             if (targetTab === 'analytics') refreshAnalyticsDashboard();
         }
 
-        // Session Management
         function renderSessions() {
             const list = document.getElementById('session-list');
             list.innerHTML = '';
-
             sessionManager.sessions.forEach((s) => {
                 const li = document.createElement('li');
                 const isActive = s.id === sessionManager.currentSessionId;
@@ -1248,7 +1295,6 @@
             event.stopPropagation();
             const deletedSession = sessionManager.deleteSession(id);
             switchSession(sessionManager.currentSessionId);
-
             showToast('Session deleted', () => {
                 if (deletedSession) {
                     sessionManager.sessions.unshift(deletedSession);
@@ -1274,7 +1320,6 @@
             const thread = document.getElementById('chat-thread');
             thread.innerHTML = '';
 
-            // Always restore the preserved intro card
             if (introCardHtml) {
                 thread.insertAdjacentHTML('afterbegin', introCardHtml);
             }
@@ -1289,13 +1334,6 @@
             thread.scrollTop = thread.scrollHeight;
         }
 
-        function extractTopic(text) {
-            let topic = text.replace(/^(what|who|where|why|when|how|describe|explain|summarize)\s+/i, '');
-            topic = topic.charAt(0).toUpperCase() + topic.slice(1);
-            if (topic.length > 26) topic = topic.substring(0, 26) + '...';
-            return topic || "Analytical Session";
-        }
-
         function filterSessions(e) {
             const query = e.target.value.toLowerCase();
             const listItems = document.querySelectorAll("#session-list li");
@@ -1306,7 +1344,6 @@
             });
         }
 
-        // Export Dossier
         function exportDossier() {
             const thread = document.getElementById("chat-thread");
             let md = "# Vision 2030 Analytical Dossier\n\nGenerated: " + new Date().toLocaleString() + "\n\n---\n\n";
@@ -1336,7 +1373,6 @@
             showToast("Dossier exported successfully!");
         }
 
-        // Toast Notifications
         function showToast(message, undoCallback) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -1367,7 +1403,6 @@
             setTimeout(() => toast.remove(), 300);
         }
 
-        // Advanced Chat Actions
         function editQuestion(btn) {
             const rawBlock = btn.closest('[data-raw-message]');
             const raw = rawBlock ? rawBlock.dataset.rawMessage : "";
@@ -1378,12 +1413,10 @@
                 const session = sessionManager.getSession(sessionManager.currentSessionId);
                 const idx = session.messages.findIndex(m => m.id === msgId);
                 if (idx > -1) {
-                    // Truncate session state to this message only
                     session.messages = session.messages.slice(0, idx);
                     sessionManager.saveSessions();
                 }
 
-                // DOM truncation: remove this block and everything after it
                 const thread = document.getElementById('chat-thread');
                 let sibling = rawBlock.nextElementSibling;
                 while (sibling) {
@@ -1397,7 +1430,6 @@
             if (currentAbortController) {
                 currentAbortController.abort();
                 currentAbortController = null;
-
                 if (currentLoadId) {
                     const block = document.getElementById(currentLoadId);
                     if (block) block.remove();
@@ -1405,7 +1437,6 @@
                 }
             }
 
-            // Reset input state so submit can proceed
             const sendBtn = document.getElementById("send-btn");
             input.disabled = false;
             if (sendBtn) {
@@ -1414,9 +1445,6 @@
             }
             isSubmitting = false;
             lucide.createIcons();
-
-            // Do NOT set activeEditingMessageId — the old bubble was removed,
-            // so submitQuery will create a fresh one via appendUserMessage.
             activeEditingMessageId = null;
 
             input.value = raw !== "undefined" && raw ? raw : "";
@@ -1425,10 +1453,7 @@
 
             const chatThread = document.getElementById("chat-thread");
             if (chatThread) {
-                chatThread.scrollTo({
-                    top: chatThread.scrollHeight,
-                    behavior: 'smooth'
-                });
+                chatThread.scrollTo({ top: chatThread.scrollHeight, behavior: 'smooth' });
             }
         }
 
@@ -1465,21 +1490,14 @@
 
         function showCopySuccess(btn) {
             const icon = btn.querySelector('i');
-            if (icon) {
-                icon.setAttribute('data-lucide', 'check-circle');
-                lucide.createIcons();
-            }
+            if (icon) { icon.setAttribute('data-lucide', 'check-circle'); lucide.createIcons(); }
             btn.classList.add('text-emerald-400');
             setTimeout(() => {
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'copy');
-                    lucide.createIcons();
-                }
+                if (icon) { icon.setAttribute('data-lucide', 'copy'); lucide.createIcons(); }
                 btn.classList.remove('text-emerald-400');
             }, 2000);
         }
 
-        // Chart.js Setup
         function initCharts() {
             Chart.defaults.color = '#94a3b8';
             Chart.defaults.font.family = 'Inter, sans-serif';
@@ -1516,12 +1534,7 @@
                     type: 'bar',
                     data: {
                         labels: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
-                        datasets: [{
-                            label: 'Latency (s)',
-                            data: [1.2, 2.8, 1.5, 3.4, 1.1],
-                            backgroundColor: '#2dd4bf',
-                            borderRadius: 4,
-                        }]
+                        datasets: [{ label: 'Latency (s)', data: [1.2, 2.8, 1.5, 3.4, 1.1], backgroundColor: '#2dd4bf', borderRadius: 4 }]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
@@ -1559,17 +1572,6 @@
             pulseChart.update();
         }
 
-        function recordLatency(latencySec) {
-            if (!latencyChart) return;
-            const data = latencyChart.data.datasets[0].data;
-            const labels = latencyChart.data.labels;
-            data.push(latencySec);
-            labels.push('Q' + (labels.length + 1));
-            if (data.length > 8) { data.shift(); labels.shift(); }
-            latencyChart.update();
-        }
-
-        // Backend Integration
         async function executeTelemetryCheck() {
             const badge = document.getElementById("connection-badge");
             const dot = document.getElementById("status-dot");
@@ -1618,7 +1620,6 @@
             } catch (e) { console.warn("Failed fetching metadata", e); }
         }
 
-        // Query Execution
         function injectSampleQuery(txt) {
             const input = document.getElementById("user-input");
             input.value = txt;
@@ -1630,12 +1631,9 @@
             if (e) e.preventDefault();
             const inputField = document.getElementById("user-input");
             const sendBtn = document.getElementById("send-btn");
-            
+
             if (isSubmitting) {
-                // User clicked the Stop button
-                if (currentAbortController) {
-                    currentAbortController.abort();
-                }
+                if (currentAbortController) currentAbortController.abort();
                 return;
             }
 
@@ -1648,20 +1646,15 @@
                 currentAbortController = null;
             }
 
-            // Auto-Name Session is handled gracefully inside SessionManager.addMessage
             isFirstQueryInSession = false;
-
             inputField.value = "";
             inputField.style.height = 'auto';
             inputField.disabled = true;
             inputField.placeholder = "Generating response...";
-            
-            sendBtn.disabled = false; // keep active to click stop
+
+            sendBtn.disabled = false;
             sendBtn.className = "absolute right-2 bottom-2 px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer flex items-center space-x-2";
-            sendBtn.innerHTML = `
-                <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-500 group-hover:text-white"></i>
-                <i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i>
-            `;
+            sendBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-500 group-hover:text-white"></i><i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i>`;
             lucide.createIcons();
 
             if (activeEditingMessageId) {
@@ -1670,7 +1663,6 @@
                     existingBubble.dataset.rawMessage = queryText;
                     const pTag = existingBubble.querySelector("p.leading-relaxed");
                     if (pTag) pTag.innerText = queryText;
-
                     const activeSession = sessionManager.getSession(sessionManager.currentSessionId);
                     if (activeSession) {
                         const idx = activeSession.messages.findIndex(m => m.id === activeEditingMessageId);
@@ -1686,9 +1678,7 @@
             const loadId = "load-" + Date.now();
             currentLoadId = loadId;
             appendLoaderBlock(loadId);
-
             currentAbortController = new AbortController();
-
             let elapsedSec = 0;
             const clockTimer = setInterval(() => {
                 elapsedSec++;
@@ -1728,7 +1718,6 @@
                 let currentTelemetry = {};
                 botMessageContainer = createEmptyBotMessageElement();
 
-                // Start the internal bubble timer
                 let bubbleTimerVal = 0;
                 bubbleTimerId = setInterval(() => {
                     bubbleTimerVal += 0.1;
@@ -1742,23 +1731,21 @@
 
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split("\n\n");
-                    buffer = lines.pop(); // Retain partial trailing chunk in buffer
+                    buffer = lines.pop();
 
                     for (const blockStr of lines) {
                         const line = blockStr.trim();
                         if (!line.startsWith("data: ")) continue;
-
                         const rawData = line.replace(/^data:\s*/, "");
+
                         if (rawData === "[DONE]") {
                             sessionManager.addMessage('user', queryText);
                             sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
-                            finalizeMessageUI(botMessageContainer);
                             return;
                         }
 
                         try {
                             const payload = JSON.parse(rawData);
-
                             if (payload.type === "metadata") {
                                 currentSources = payload.sources;
                                 renderCitationsUI(botMessageContainer, payload.sources, payload.cached);
@@ -1770,9 +1757,7 @@
                             } else if (payload.type === "error") {
                                 appendErrorBlock(payload.message);
                             }
-                        } catch (e) {
-                            console.warn("Error parsing SSE block:", e, rawData);
-                        }
+                        } catch (e) { console.warn("Error parsing SSE block:", e, rawData); }
                     }
                 }
             } catch (error) {
@@ -1782,15 +1767,13 @@
                 currentLoadId = null;
 
                 if (error.name === 'AbortError') {
-                    // Aborted by user clicking Stop
                     if (botMessageContainer) {
                         sessionManager.addMessage('user', queryText);
                         sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
-                        finalizeMessageUI(botMessageContainer);
                     }
                     return;
                 }
-                appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running on the configured port.");
+                appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running.");
             } finally {
                 if (bubbleTimerId) clearInterval(bubbleTimerId);
                 currentAbortController = null;
@@ -1811,7 +1794,6 @@
             chunk.id = "msg-" + Date.now();
             chunk.className = "flex space-x-4 max-w-3xl mx-auto w-full mb-6";
             chunk.dataset.role = "system";
-            
             chunk.innerHTML = `
                 <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-900/20 ring-1 ring-white/10 mt-1">
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
@@ -1843,12 +1825,10 @@
             const citationsBox = container.querySelector(".citations-box");
             const citationsList = container.querySelector(".citations-list");
             citationsBox.classList.remove("hidden");
-            
             let html = "";
             if (isCached) {
                 html += `<span class="px-2 py-1 rounded bg-teal-500/20 text-teal-400 text-[10px] font-bold uppercase tracking-wider border border-teal-500/30 flex items-center"><i data-lucide="zap" class="w-3 h-3 mr-1"></i> CACHE HIT</span>`;
             }
-            
             sources.forEach(c => {
                 const cleanFile = c.file ? c.file.split(/[\\/]/).pop().replace('.pdf', '') : "Unknown Source";
                 const previewText = escapeHtml(c.section || 'General Content extracted from document structure.');
@@ -1856,9 +1836,6 @@
                     <div class="group/cit relative px-2.5 py-1.5 rounded-md bg-slate-950 border border-slate-800 hover:border-emerald-500/30 flex items-center space-x-2 text-[11px] transition-colors cursor-help">
                         <div class="group/file relative flex items-center">
                             <span class="text-slate-300 font-medium truncate max-w-[150px] cursor-help">${escapeHtml(cleanFile)}</span>
-                            <div class="absolute bottom-full left-0 mb-2 hidden w-max max-w-xs rounded-md bg-gray-800 px-2.5 py-1.5 text-xs text-gray-200 shadow-lg ring-1 ring-gray-700 group-hover/file:block z-50">
-                                ${escapeHtml(c.file || 'Unknown Source')}
-                            </div>
                         </div>
                         <span class="w-1 h-1 rounded-full bg-slate-700"></span>
                         <span class="text-slate-500">Pg ${c.page || '-'}</span>
@@ -1877,23 +1854,13 @@
         function appendTokenToMessageUI(container, token) {
             const contentBox = container.querySelector(".message-content-box");
             const indicator = contentBox.querySelector(".generation-indicator");
-            if (indicator) {
-                indicator.remove();
-            }
+            if (indicator) indicator.remove();
             if (!container.dataset.rawMessage) container.dataset.rawMessage = "";
             container.dataset.rawMessage += token;
-            
-            // Re-parse markdown
             const rawHtml = safeMarked(container.dataset.rawMessage);
             contentBox.innerHTML = DOMPurify.sanitize(rawHtml);
-            
             const thread = document.getElementById("chat-thread");
             thread.scrollTop = thread.scrollHeight;
-        }
-
-        function finalizeMessageUI(container) {
-            // Rendering completion logic (if any) is handled here.
-            // State saving is now managed directly by submitQuery and SessionManager.
         }
 
         function appendUserMessage(msg, existingId = null, saveState = true) {
@@ -1903,9 +1870,6 @@
             chunk.className = "flex justify-end max-w-3xl mx-auto w-full mb-6 relative";
             chunk.dataset.rawMessage = msg;
             chunk.dataset.role = "user";
-
-            // State is managed by SessionManager centrally.
-
             chunk.innerHTML = `
                 <div class="flex flex-col items-end max-w-[85%] group">
                     <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-50 rounded-2xl rounded-tr-sm px-5 py-3.5 text-sm shadow-sm backdrop-blur-sm z-10">
@@ -1956,17 +1920,11 @@
             chunk.dataset.rawMessage = data.answer;
             chunk.dataset.role = "system";
 
-            // State is managed by SessionManager centrally.
-
             const rawHtml = marked.parse(data.answer);
             const cleanHtml = DOMPurify.sanitize(rawHtml);
-
             let citationsHtml = "";
             if (data.citations && data.citations.length > 0) {
-                citationsHtml = `
-                    <div class="mt-5 pt-4 border-t border-slate-800/60">
-                        <p class="text-[9px] font-bold tracking-widest text-slate-500 uppercase mb-3 flex items-center"><i data-lucide="file-text" class="w-3 h-3 mr-1.5"></i> Source Metadata</p>
-                        <div class="flex flex-wrap gap-2">`;
+                citationsHtml = `<div class="mt-5 pt-4 border-t border-slate-800/60"><p class="text-[9px] font-bold tracking-widest text-slate-500 uppercase mb-3 flex items-center"><i data-lucide="file-text" class="w-3 h-3 mr-1.5"></i> Source Metadata</p><div class="flex flex-wrap gap-2">`;
                 data.citations.forEach(c => {
                     const cleanFile = c.file.split(/[\\/]/).pop().replace('.pdf', '');
                     const previewText = c.preview ? escapeHtml(c.preview) : escapeHtml(c.section || 'General Content extracted from document structure.');
@@ -1986,10 +1944,7 @@
 
             let tps = 0;
             const approxTokens = data.answer.length / 4;
-            if (data.metrics && data.metrics.latency_seconds > 0) {
-                tps = (approxTokens / data.metrics.latency_seconds).toFixed(1);
-            }
-
+            if (data.metrics && data.metrics.latency_seconds > 0) tps = (approxTokens / data.metrics.latency_seconds).toFixed(1);
             let telemetryLabel = `<div class="text-[9px] font-medium text-slate-500 flex justify-end items-center space-x-3 mono mt-4 pt-3 border-t border-slate-800/50 opacity-80">
                 <span>Latency: ${data.metrics?.latency_seconds || '--'}s</span>
                 <span>Depth: ${data.metrics?.reranked_k || '--'} chunks</span>
@@ -2021,15 +1976,9 @@
             const footer = document.createElement("div");
             footer.className = "flex items-center justify-between border-t border-emerald-900/30 pt-2 mt-4 text-[11px] font-medium text-emerald-500/70 tracking-wide";
             footer.innerHTML = `
-                <div class="flex items-center gap-1.5">
-                    <i data-lucide="timer" class="w-3.5 h-3.5"></i> <span>${payload.generation_time}s Generation</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <i data-lucide="search" class="w-3.5 h-3.5"></i> <span>Depth: K=${payload.retrieval_k}</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i> <span>${timestamp}</span>
-                </div>
+                <div class="flex items-center gap-1.5"><i data-lucide="timer" class="w-3.5 h-3.5"></i> <span>${payload.generation_time}s Generation</span></div>
+                <div class="flex items-center gap-1.5"><i data-lucide="search" class="w-3.5 h-3.5"></i> <span>Depth: K=${payload.retrieval_k}</span></div>
+                <div class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> <span>${timestamp}</span></div>
             `;
             container.querySelector(".bg-slate-900\\/60").appendChild(footer);
             lucide.createIcons();
@@ -2054,14 +2003,9 @@
         }
 
         async function uploadAndStreamIngest(file) {
-            if (!file.name.endsWith('.pdf')) {
-                alert("Only PDF documents are supported.");
-                return;
-            }
-
+            if (!file.name.endsWith('.pdf')) { alert("Only PDF documents are supported."); return; }
             const formData = new FormData();
             formData.append('file', file);
-
             const container = document.getElementById('ingest-progress-container');
             const progressBar = document.getElementById('ingest-progress-fill');
             const statusLabel = document.getElementById('ingest-status-text');
@@ -2072,56 +2016,34 @@
             statusLabel.innerText = "Connecting to Pipeline...";
 
             try {
-                const response = await fetch(`${BASE_BACKEND_URL}/api/ingest/stream`, {
-                    method: 'POST',
-                    body: formData,
-                    mode: 'cors'
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Upload failed with status ${response.status}`);
-                }
+                const response = await fetch(`${BASE_BACKEND_URL}/api/ingest/stream`, { method: 'POST', body: formData, mode: 'cors' });
+                if (!response.ok) throw new Error(`Upload failed with status ${response.status}`);
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
-
                     const chunk = decoder.decode(value);
                     const lines = chunk.split('\n');
-
                     for (const line of lines) {
                         if (line.trim().startsWith('data: ')) {
                             const payloadText = line.trim().substring(6);
                             if (!payloadText) continue;
-                            
                             try {
                                 const payload = JSON.parse(payloadText);
-                                
                                 if (payload.stage === 'error') {
                                     statusLabel.innerText = `Ingestion Failed: ${payload.message}`;
                                     progressBar.className = "bg-rose-500 h-1.5 rounded-full transition-all duration-300 ease-out";
                                     return;
                                 }
-
-                                // Update UI smoothly
-                                if (payload.progress !== undefined) {
-                                    progressBar.style.width = `${payload.progress}%`;
-                                }
-                                if (payload.message) {
-                                    statusLabel.innerText = payload.message;
-                                }
-
+                                if (payload.progress !== undefined) progressBar.style.width = `${payload.progress}%`;
+                                if (payload.message) statusLabel.innerText = payload.message;
                                 if (payload.stage === 'complete') {
                                     progressBar.className = "bg-emerald-500 h-1.5 rounded-full transition-all duration-300 ease-out";
-                                    // Instantly refresh telemetry metrics across the dashboard
                                     await syncPipelineTelemetry();
                                 }
-                            } catch (e) {
-                                console.warn("Failed parsing SSE payload:", payloadText);
-                            }
+                            } catch (e) { console.warn("Failed parsing SSE payload:", payloadText); }
                         }
                     }
                 }
@@ -2131,9 +2053,7 @@
             }
         }
 
-        // --- Document Control Directory & Deferred Purge ---
         let undoTimeoutIds = {};
-
         async function fetchDocumentDirectory() {
             try {
                 const res = await fetch(`${BASE_BACKEND_URL}/api/documents`);
@@ -2141,15 +2061,13 @@
                     const data = await res.json();
                     renderDirectoryTable(data.documents || []);
                 }
-            } catch (e) {
-                console.error("Failed to fetch document registry", e);
-            }
+            } catch (e) { console.error("Failed to fetch document registry", e); }
         }
 
         function renderDirectoryTable(docs) {
             const tbody = document.getElementById("registry-table-body");
             tbody.innerHTML = "";
-            if(docs.length === 0) {
+            if (docs.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-xs text-slate-500 italic">No documents indexed.</td></tr>`;
                 return;
             }
@@ -2158,10 +2076,7 @@
                 tr.className = "hover:bg-slate-800/20 transition-colors directory-row";
                 tr.setAttribute("data-filename", doc.filename);
                 tr.setAttribute("data-chunks", doc.chunks);
-                
-                // Strip folder paths and backslashes for display
                 const cleanDisplayName = doc.filename.split(/[/\\]/).pop();
-                
                 tr.innerHTML = `
                     <td class="py-3 px-2 flex items-center space-x-2">
                         <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
@@ -2186,59 +2101,41 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             const searchInput = document.getElementById("document-search");
-            if(searchInput) {
+            if (searchInput) {
                 searchInput.addEventListener("keyup", (e) => {
                     const term = e.target.value.toLowerCase();
                     const rows = document.querySelectorAll(".directory-row");
                     rows.forEach(row => {
                         const filename = row.getAttribute("data-filename").toLowerCase();
-                        if(filename.includes(term)) {
-                            row.style.display = "";
-                        } else {
-                            row.style.display = "none";
-                        }
+                        row.style.display = filename.includes(term) ? "" : "none";
                     });
                 });
             }
         });
 
         async function queueDocumentDeletion(filename) {
-            const passcode = prompt("Administrative Access Required.\\n\\nEnter passcode to authorize vector deletion:");
-            if (!passcode) return; // Abort instantly on cancel or empty
+            const passcode = prompt("Administrative Access Required.\n\nEnter passcode to authorize vector deletion:");
+            if (!passcode) return;
 
             try {
-                // Pre-flight validation
-                const authRes = await fetch(`${BASE_BACKEND_URL}/api/documents/auth`, {
-                    headers: { "X-Admin-Access-Token": passcode }
-                });
-                
-                if (!authRes.ok) {
-                    alert("Access Denied: Invalid Administrative Passcode.");
-                    return;
-                }
-            } catch (e) {
-                alert("Network error during authentication.");
-                return;
-            }
+                const authRes = await fetch(`${BASE_BACKEND_URL}/api/documents/auth`, { headers: { "X-Admin-Access-Token": passcode } });
+                if (!authRes.ok) { alert("Access Denied: Invalid Administrative Passcode."); return; }
+            } catch (e) { alert("Network error during authentication."); return; }
 
             const row = document.querySelector(`.directory-row[data-filename="${filename}"]`);
-            if(!row) return;
+            if (!row) return;
 
-            // Soft-hide the row
             row.classList.add("hidden");
-
-            // Telemetry Spoofing
             const chunks = parseInt(row.getAttribute("data-chunks")) || 0;
             const docLoaderNode = document.getElementById("pipe-docs");
             const chunkLoaderNode = document.getElementById("pipe-chunks");
-            
+
             if (docLoaderNode) docLoaderNode.innerText = Math.max(0, parseInt(docLoaderNode.innerText) - 1);
             if (chunkLoaderNode) {
                 const currentChunks = parseInt(chunkLoaderNode.innerText.replace(/,/g, '')) || 0;
                 chunkLoaderNode.innerText = Math.max(0, currentChunks - chunks).toLocaleString();
             }
 
-            // Show Toast
             showUndoToast(filename, row, chunks, passcode);
         }
 
@@ -2250,345 +2147,171 @@
             toast.classList.remove("translate-y-full", "opacity-0");
             toastText.innerText = `Deleting vectors for "${filename}"...`;
 
-            if(undoTimeoutIds[filename]) clearTimeout(undoTimeoutIds[filename]);
+            if (undoTimeoutIds[filename]) clearTimeout(undoTimeoutIds[filename]);
 
-            // Execute actual deletion after 10 seconds
             undoTimeoutIds[filename] = setTimeout(async () => {
                 toast.classList.add("translate-y-full", "opacity-0");
                 try {
-                    const res = await fetch(`${BASE_BACKEND_URL}/api/documents?filename=${encodeURIComponent(filename)}`, { 
-                        method: "DELETE",
-                        headers: {
-                            "X-Admin-Access-Token": passcode
-                        }
+                    const res = await fetch(`${BASE_BACKEND_URL}/api/documents?filename=${encodeURIComponent(filename)}`, {
+                        method: "DELETE", headers: { "X-Admin-Access-Token": passcode }
                     });
-                    if(res.ok) {
+                    if (res.ok) {
                         row.remove();
                         syncPipelineTelemetry();
                     } else {
                         const errText = await res.text();
-                        if (res.status === 403) {
-                            alert("Access Denied: Invalid Administrative Passcode.");
-                        } else {
-                            alert("Purge Failed: " + errText);
-                        }
+                        if (res.status === 403) alert("Access Denied: Invalid Administrative Passcode.");
+                        else alert("Purge Failed: " + errText);
                         throw new Error("Purge Failed");
                     }
-                } catch(e) {
+                } catch (e) {
                     console.error("Purge Error", e);
-                    // Rollback spoofing if API fails
                     row.classList.remove("hidden");
                     syncPipelineTelemetry();
                 }
                 delete undoTimeoutIds[filename];
             }, 10000);
 
-            // Undo Handler
             undoBtn.onclick = () => {
                 clearTimeout(undoTimeoutIds[filename]);
                 delete undoTimeoutIds[filename];
-                
                 toast.classList.add("translate-y-full", "opacity-0");
                 row.classList.remove("hidden");
-                
-                // Rollback Spoofing
                 syncPipelineTelemetry();
             };
         }
 
-        // Override original syncPipelineTelemetry to also fetch directory
         const originalSync = syncPipelineTelemetry;
-        syncPipelineTelemetry = async function() {
-            await originalSync();
-            await fetchDocumentDirectory();
-        };
+        syncPipelineTelemetry = async function () { await originalSync(); await fetchDocumentDirectory(); };
 
-        // Call on initial load if we are on the pipeline tab
-        document.addEventListener("DOMContentLoaded", () => {
-            fetchDocumentDirectory();
-        });
-
+        document.addEventListener("DOMContentLoaded", () => { fetchDocumentDirectory(); });
     </script>
 
-    <!-- UNDO TOAST NOTIFICATION -->
-    <div id="undo-toast" class="fixed bottom-6 right-6 flex items-center space-x-4 bg-slate-900 border border-rose-500/40 text-slate-300 px-4 py-3 rounded-lg shadow-2xl transition-all duration-300 transform translate-y-full opacity-0 z-50">
-        <div class="flex items-center space-x-2">
-            <i data-lucide="trash" class="w-4 h-4 text-rose-400 animate-pulse"></i>
-            <span id="undo-toast-text" class="text-sm font-medium">Deleting...</span>
-        </div>
-        <div class="w-px h-4 bg-slate-700/60"></div>
-        <button id="undo-btn" class="text-sm font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-wide transition-colors">
-            Undo
-        </button>
-    </div>
-
-    <!-- Fixed Mobile Bottom Navigation Bar -->
-    <nav class="mobile-bottom-nav">
-      <a href="#" class="nav-tab-item active" data-target-view="view-chat">
-        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        <span>Chat</span>
-      </a>
-      <a href="#" class="nav-tab-item" data-target-view="view-pipeline">
-        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="8" height="8" rx="1"></rect><rect x="14" y="2" width="8" height="8" rx="1"></rect><rect x="2" y="14" width="8" height="8" rx="1"></rect><rect x="14" y="14" width="8" height="8" rx="1"></rect></svg>
-        <span>Pipeline</span>
-      </a>
-      <a href="#" class="nav-tab-item" data-target-view="view-registry">
-        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-        <span>Registry</span>
-      </a>
-      <a href="#" class="nav-tab-item" data-target-view="view-analytics">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-        <span>Analytics</span>
-      </a>
-    </nav>
-
-    <!-- Navigation Matrix Overlay & Drawer -->
-    <div id="mobile-drawer-overlay" class="mobile-drawer-overlay"></div>
-
-    <aside id="mobile-drawer-panel" class="mobile-drawer-panel">
-      <!-- Top Section -->
-      <div style="flex: 1; overflow-y: auto;">
-        <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #14b8a6); display: flex; align-items: center; justify-content: center;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <span style="font-size: 12px; font-weight: 800; color: #10b981; letter-spacing: 1.5px; text-transform: uppercase;">Navigation Matrix</span>
-          </div>
-          <button id="mobile-drawer-close" style="background: none; border: none; color: #64748b; font-size: 18px; cursor: pointer; padding: 4px;">✕</button>
-        </div>
-
-        <!-- Navigation Matrices Section -->
-        <div style="margin-bottom: 24px;">
-          <span style="font-size: 9px; color: #475569; font-weight: 700; letter-spacing: 1.5px; display: block; margin-bottom: 10px; text-transform: uppercase;">Navigation Matrices</span>
-          <div style="display: flex; flex-direction: column; gap: 4px;" id="drawer-nav-list">
-            <button class="drawer-nav-btn active" data-drawer-target="view-chat" onclick="drawerSwitchTab(this, 'view-chat')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              AI Chat Intelligence
-            </button>
-            <button class="drawer-nav-btn" data-drawer-target="view-pipeline" onclick="drawerSwitchTab(this, 'view-pipeline')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Pipeline Engineering
-            </button>
-            <button class="drawer-nav-btn" data-drawer-target="view-registry" onclick="drawerSwitchTab(this, 'view-registry')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              Corpus Registry
-            </button>
-            <button class="drawer-nav-btn" data-drawer-target="view-analytics" onclick="drawerSwitchTab(this, 'view-analytics')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              Analytics Engine
-            </button>
-          </div>
-        </div>
-
-        <!-- Analytical Sessions Section -->
-        <div style="margin-bottom: 20px;">
-          <span style="font-size: 9px; color: #475569; font-weight: 700; letter-spacing: 1.5px; display: block; margin-bottom: 10px; text-transform: uppercase;">Analytical Sessions</span>
-          <button onclick="createNewSession(); refreshDrawerSessions();" style="width: 100%; padding: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 10px; font-weight: 600; font-size: 13px; margin-bottom: 10px; cursor: pointer;">+ New Session</button>
-          <div style="position: relative; margin-bottom: 12px;">
-            <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: #475569; fill: none; stroke-width: 2;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="drawer-session-search" placeholder="Search sessions..." style="width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 12px 9px 32px; color: #94a3b8; font-size: 12px; outline: none; box-sizing: border-box;">
-          </div>
-          <div id="drawer-session-list">
-            <!-- Populated dynamically by JS -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom Section: Retrieval Depth -->
-      <div style="flex-shrink: 0; background: #0f172a; border: 1px solid #1e293b; padding: 16px; border-radius: 12px;">
-        <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #475569; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
-          <span>Retrieval Depth</span>
-          <span id="retrieval-depth-value" style="color: #10b981; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); padding: 1px 8px; border-radius: 6px; font-size: 11px;">3</span>
-        </div>
-        <input type="range" id="retrieval-depth-slider" class="retrieval-slider" min="1" max="10" value="3" style="width: 100%; accent-color: #10b981;">
-        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #334155; margin-top: 4px;">
-          <span>1</span>
-          <span>10</span>
-        </div>
-      </div>
-    </aside>
-
     <script>
-    /* ===========================================================
-       MOBILE APP SHELL - MASTER CONTROLLER
-       =========================================================== */
+        /* ===========================================================
+           MOBILE APP SHELL - MASTER CONTROLLER (FIXED)
+           =========================================================== */
+        function activateMobileView(targetViewId) {
+            const allViews = document.querySelectorAll('.tab-content-view');
+            const allNavItems = document.querySelectorAll('.nav-tab-item');
+            const allDrawerBtns = document.querySelectorAll('.drawer-nav-btn');
 
-    // Core tab-switching function used by both bottom nav and drawer
-    function activateMobileView(targetViewId) {
-      const allViews = document.querySelectorAll('.tab-content-view');
-      const allNavItems = document.querySelectorAll('.nav-tab-item');
-      const allDrawerBtns = document.querySelectorAll('.drawer-nav-btn');
+            allViews.forEach(v => {
+                v.classList.remove('mobile-active-view');
+                v.style.removeProperty('display');
+            });
 
-      // 1. Remove mobile-active-view from ALL tab views
-      allViews.forEach(v => {
-        v.classList.remove('mobile-active-view');
-        v.style.removeProperty('display');
-      });
+            const targetView = document.getElementById(targetViewId);
+            if (!targetView) return;
 
-      // 2. Find and activate the target view
-      const targetView = document.getElementById(targetViewId);
-      if (!targetView) return;
+            targetView.classList.add('mobile-active-view');
+            /* CRITICAL FIX: Ensure tab content view strictly uses flex[cite: 2] */
+            targetView.style.setProperty('display', 'flex', 'important');
 
-      targetView.classList.add('mobile-active-view');
-      targetView.style.setProperty('display', 'flex', 'important');
+            const panelChat = document.getElementById('panel-chat');
+            const panelPipeline = document.getElementById('panel-pipeline');
+            const panelAnalytics = document.getElementById('panel-analytics');
 
-      // 3. Handle section visibility
-      // Key insight: view-registry is INSIDE panel-pipeline section
-      // So panel-pipeline must be visible for BOTH pipeline and registry tabs
-      const panelChat = document.getElementById('panel-chat');
-      const panelPipeline = document.getElementById('panel-pipeline');
-      const panelAnalytics = document.getElementById('panel-analytics');
+            if (panelChat) panelChat.style.setProperty('display', 'none', 'important');
+            if (panelPipeline) panelPipeline.style.setProperty('display', 'none', 'important');
+            if (panelAnalytics) panelAnalytics.style.setProperty('display', 'none', 'important');
 
-      // Hide all sections first
-      if (panelChat) panelChat.style.setProperty('display', 'none', 'important');
-      if (panelPipeline) panelPipeline.style.setProperty('display', 'none', 'important');
-      if (panelAnalytics) panelAnalytics.style.setProperty('display', 'none', 'important');
+            /* CRITICAL FIX: Master sections must use display: flex, NOT block[cite: 2] */
+            if (targetViewId === 'view-chat' && panelChat) {
+                panelChat.style.setProperty('display', 'flex', 'important');
+            } else if (targetViewId === 'view-pipeline' && panelPipeline) {
+                panelPipeline.style.setProperty('display', 'flex', 'important');
+            } else if (targetViewId === 'view-registry' && panelPipeline) {
+                panelPipeline.style.setProperty('display', 'flex', 'important');
+            } else if (targetViewId === 'view-analytics' && panelAnalytics) {
+                panelAnalytics.style.setProperty('display', 'flex', 'important');
+            }
 
-      // Show the correct parent section
-      if (targetViewId === 'view-chat' && panelChat) {
-        panelChat.style.setProperty('display', 'block', 'important');
-      } else if (targetViewId === 'view-pipeline' && panelPipeline) {
-        panelPipeline.style.setProperty('display', 'block', 'important');
-      } else if (targetViewId === 'view-registry' && panelPipeline) {
-        // Registry lives INSIDE panel-pipeline, so we must show panel-pipeline
-        panelPipeline.style.setProperty('display', 'block', 'important');
-      } else if (targetViewId === 'view-analytics' && panelAnalytics) {
-        panelAnalytics.style.setProperty('display', 'block', 'important');
-      }
+            allNavItems.forEach(nav => {
+                if (nav.getAttribute('data-target-view') === targetViewId) nav.classList.add('active');
+                else nav.classList.remove('active');
+            });
 
-      // 4. Sync bottom nav active state
-      allNavItems.forEach(nav => {
-        if (nav.getAttribute('data-target-view') === targetViewId) {
-          nav.classList.add('active');
-        } else {
-          nav.classList.remove('active');
-        }
-      });
+            allDrawerBtns.forEach(btn => {
+                if (btn.getAttribute('data-drawer-target') === targetViewId) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
 
-      // 5. Sync drawer nav active state
-      allDrawerBtns.forEach(btn => {
-        if (btn.getAttribute('data-drawer-target') === targetViewId) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
+            const scrollStage = document.getElementById('mobile-scroll-stage');
+            if (scrollStage) scrollStage.scrollTop = 0;
 
-      // 6. Scroll the main stage to top
-      const scrollStage = document.getElementById('mobile-scroll-stage');
-      if (scrollStage) scrollStage.scrollTop = 0;
-
-      // 7. If we just switched to registry, trigger data fetch
-      if (targetViewId === 'view-registry' && typeof fetchDocumentDirectory === 'function') {
-        fetchDocumentDirectory();
-      }
-    }
-
-    // Drawer nav button handler (switches tab + closes drawer)
-    function drawerSwitchTab(btn, targetViewId) {
-      activateMobileView(targetViewId);
-      closeMobileDrawer();
-    }
-
-    // Drawer open/close
-    function openMobileDrawer() {
-      const overlay = document.getElementById('mobile-drawer-overlay');
-      const panel = document.getElementById('mobile-drawer-panel');
-      if (overlay && panel) {
-        overlay.classList.add('active');
-        panel.classList.add('active');
-        refreshDrawerSessions();
-      }
-    }
-
-    function closeMobileDrawer() {
-      const overlay = document.getElementById('mobile-drawer-overlay');
-      const panel = document.getElementById('mobile-drawer-panel');
-      if (overlay && panel) {
-        overlay.classList.remove('active');
-        panel.classList.remove('active');
-      }
-    }
-
-    // Populate drawer sessions from SessionManager
-    function refreshDrawerSessions() {
-      const container = document.getElementById('drawer-session-list');
-      if (!container || typeof sessionManager === 'undefined') return;
-
-      const sessions = sessionManager.sessions || [];
-      container.innerHTML = '';
-
-      sessions.forEach(session => {
-        const item = document.createElement('div');
-        item.className = 'drawer-session-item' + (session.id === sessionManager.currentSessionId ? ' active' : '');
-        item.innerHTML = `<span style="font-size: 14px;">🗨</span> ${session.title || 'New Analysis'}`;
-        item.addEventListener('click', () => {
-          loadSession(session.id);
-          closeMobileDrawer();
-        });
-        container.appendChild(item);
-      });
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      // --- Bottom Nav Tab Switching ---
-      const navItems = document.querySelectorAll(".nav-tab-item");
-      navItems.forEach((item) => {
-        item.addEventListener("click", (e) => {
-          e.preventDefault();
-          const targetViewId = item.getAttribute("data-target-view");
-          if (targetViewId) activateMobileView(targetViewId);
-        });
-      });
-
-      // --- Drawer Controls ---
-      const hamburgerBtn = document.getElementById("mobile-menu-trigger");
-      const closeDrawerBtn = document.getElementById("mobile-drawer-close");
-      const drawerOverlay = document.getElementById("mobile-drawer-overlay");
-
-      if (hamburgerBtn) hamburgerBtn.addEventListener("click", openMobileDrawer);
-      if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeMobileDrawer);
-      if (drawerOverlay) drawerOverlay.addEventListener("click", closeMobileDrawer);
-
-      // --- Drawer Session Search ---
-      const drawerSearch = document.getElementById("drawer-session-search");
-      if (drawerSearch) {
-        drawerSearch.addEventListener("input", (e) => {
-          const term = e.target.value.toLowerCase();
-          const items = document.querySelectorAll(".drawer-session-item");
-          items.forEach(item => {
-            item.style.display = item.textContent.toLowerCase().includes(term) ? "" : "none";
-          });
-        });
-      }
-
-      // --- Synchronize Retrieval Depth Slider ---
-      const depthSlider = document.getElementById("retrieval-depth-slider");
-      const depthValueDisplay = document.getElementById("retrieval-depth-value");
-      const desktopSlider = document.getElementById("param-k");
-
-      if (depthSlider && depthValueDisplay) {
-        if (desktopSlider) {
-          depthSlider.value = desktopSlider.value;
-          depthValueDisplay.textContent = depthSlider.value;
+            if (targetViewId === 'view-registry' && typeof fetchDocumentDirectory === 'function') fetchDocumentDirectory();
         }
 
-        depthSlider.addEventListener("input", (e) => {
-          depthValueDisplay.textContent = e.target.value;
-          if (desktopSlider) {
-            desktopSlider.value = e.target.value;
-            if (typeof updateKValText === 'function') updateKValText(e.target.value);
-          }
-        });
-      }
+        function drawerSwitchTab(btn, targetViewId) { activateMobileView(targetViewId); closeMobileDrawer(); }
 
-      // --- Initial state: ensure chat view is active on mobile ---
-      if (window.innerWidth <= 768) {
-        activateMobileView('view-chat');
-      }
-    });
+        function openMobileDrawer() {
+            const overlay = document.getElementById('mobile-drawer-overlay');
+            const panel = document.getElementById('mobile-drawer-panel');
+            if (overlay && panel) { overlay.classList.add('active'); panel.classList.add('active'); refreshDrawerSessions(); }
+        }
+
+        function closeMobileDrawer() {
+            const overlay = document.getElementById('mobile-drawer-overlay');
+            const panel = document.getElementById('mobile-drawer-panel');
+            if (overlay && panel) { overlay.classList.remove('active'); panel.classList.remove('active'); }
+        }
+
+        function refreshDrawerSessions() {
+            const container = document.getElementById('drawer-session-list');
+            if (!container || typeof sessionManager === 'undefined') return;
+            const sessions = sessionManager.sessions || [];
+            container.innerHTML = '';
+            sessions.forEach(session => {
+                const item = document.createElement('div');
+                item.className = 'drawer-session-item' + (session.id === sessionManager.currentSessionId ? ' active' : '');
+                item.innerHTML = `<span style="font-size: 14px;">🗨</span> ${session.title || 'New Analysis'}`;
+                item.addEventListener('click', () => { loadSession(session.id); closeMobileDrawer(); });
+                container.appendChild(item);
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const navItems = document.querySelectorAll(".nav-tab-item");
+            navItems.forEach((item) => {
+                item.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    const targetViewId = item.getAttribute("data-target-view");
+                    if (targetViewId) activateMobileView(targetViewId);
+                });
+            });
+
+            const hamburgerBtn = document.getElementById("mobile-menu-trigger");
+            const closeDrawerBtn = document.getElementById("mobile-drawer-close");
+            const drawerOverlay = document.getElementById("mobile-drawer-overlay");
+
+            if (hamburgerBtn) hamburgerBtn.addEventListener("click", openMobileDrawer);
+            if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeMobileDrawer);
+            if (drawerOverlay) drawerOverlay.addEventListener("click", closeMobileDrawer);
+
+            const drawerSearch = document.getElementById("drawer-session-search");
+            if (drawerSearch) {
+                drawerSearch.addEventListener("input", (e) => {
+                    const term = e.target.value.toLowerCase();
+                    const items = document.querySelectorAll(".drawer-session-item");
+                    items.forEach(item => { item.style.display = item.textContent.toLowerCase().includes(term) ? "" : "none"; });
+                });
+            }
+
+            const depthSlider = document.getElementById("retrieval-depth-slider");
+            const depthValueDisplay = document.getElementById("retrieval-depth-value");
+            const desktopSlider = document.getElementById("param-k");
+
+            if (depthSlider && depthValueDisplay) {
+                if (desktopSlider) { depthSlider.value = desktopSlider.value; depthValueDisplay.textContent = depthSlider.value; }
+                depthSlider.addEventListener("input", (e) => {
+                    depthValueDisplay.textContent = e.target.value;
+                    if (desktopSlider) { desktopSlider.value = e.target.value; if (typeof updateKValText === 'function') updateKValText(e.target.value); }
+                });
+            }
+
+            if (window.innerWidth <= 768) activateMobileView('view-chat');
+        });
     </script>
 </body>
 
