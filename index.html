@@ -90,11 +90,11 @@
         }
 
         /* ==========================================================================
-           SAUDI VISION 2030 - MASTER MOBILE APP SHELL (MAX-WIDTH: 768PX)
-           Figma-Accurate PWA Layout Engine
+           SAUDI VISION 2030 - MOBILE & TABLET UNIVERSAL APP SHELL FIX
+           Targets both small (< 640px) and medium tablet screens (640px to 1024px)
            ========================================================================== */
 
-        @media screen and (max-width: 768px) {
+        @media screen and (max-width: 1024px) {
 
           /* =============================================
              LAYER 1: APP SHELL VIEWPORT LOCK
@@ -102,6 +102,7 @@
           html {
             overflow: hidden !important;
             height: 100% !important;
+            width: 100vw !important;
           }
           body {
             overflow: hidden !important;
@@ -110,6 +111,7 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
             height: 100dvh !important;
             height: 100vh !important; /* fallback */
+            width: 100vw !important;
             display: flex !important;
             flex-direction: column !important;
             margin: 0 !important;
@@ -200,9 +202,10 @@
             justify-content: flex-start !important;
             align-items: stretch !important;
             width: 100% !important;
+            height: calc(100dvh - 120px) !important; /* Total height minus Header (60px) and Bottom Nav (60px) */
             min-height: 0 !important;
             -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 60px !important;
+            padding-bottom: 32px !important;
           }
 
           /* === CRITICAL: Sections must NOT expand with flex-1 === */
@@ -250,6 +253,7 @@
             width: 100% !important;
             margin: 0 !important;
             padding: 16px !important;
+            gap: 16px !important;
             box-sizing: border-box !important;
             animation: mobileViewFadeIn 0.2s ease-out forwards !important;
           }
@@ -640,10 +644,10 @@
         <!-- Right side: Active Badge and New Hamburger Menu -->
         <div style="display: flex; align-items: center; gap: 12px;">
             <!-- Keep only THIS Active Status Badge -->
-            <span class="status-badge-active md:hidden">• ACTIVE</span>
+            <span class="status-badge-active block lg:hidden">• ACTIVE</span>
             
             <!-- Hamburger Menu Button -->
-            <button id="mobile-menu-trigger" class="md:hidden" style="background: transparent; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; outline: none;">
+            <button id="mobile-menu-trigger" class="lg:hidden" style="background: transparent; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; outline: none;">
               <svg viewBox="0 0 24 24" width="26" height="26" stroke="#f8fafc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -674,7 +678,7 @@
     <div class="flex flex-1 overflow-hidden">
         <!-- FIXED SIDEBAR -->
         <aside
-            class="w-72 border-r border-slate-800/60 bg-[#080b16] flex flex-col hidden md:flex z-10 shrink-0 h-screen overflow-hidden">
+            class="w-72 border-r border-slate-800/60 bg-[#080b16] flex flex-col hidden lg:flex z-10 shrink-0 h-screen overflow-hidden">
             <!-- Top Section (Navigation) -->
             <div class="p-4 shrink-0 space-y-2">
                 <p class="px-3 text-[10px] font-semibold text-slate-500 tracking-widest uppercase">Navigation Matrices
