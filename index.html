@@ -542,24 +542,6 @@
                 display: none !important;
             }
         }
-
-        /* ==========================================================================
-           DESKTOP/TABLET LAYOUT STABILIZATION
-           ========================================================================== */
-        @media screen and (min-width: 1024px) {
-            /* Force tab contents to flow naturally on desktop to prevent them from slipping under the absolute bounds */
-            .tab-content-view {
-                position: relative !important;
-                inset: auto !important;
-                width: 100% !important;
-                flex: 1 !important;
-            }
-            #mobile-scroll-stage {
-                position: relative !important;
-                display: flex !important;
-                flex: 1 !important;
-            }
-        }
     </style>
 </head>
 
@@ -688,7 +670,7 @@
             <!-- ==========================================
           VIEW: CHAT
          ========================================== -->
-                <div id="view-chat" class="tab-content-view mobile-active-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14]">
+                <div id="view-chat" class="tab-content-view mobile-active-view absolute inset-0 lg:relative lg:inset-auto lg:flex-1 flex flex-col w-full min-h-0 bg-[#080c14]">
                     <div
                         class="flex-shrink-0 flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a]">
                         <div class="flex items-center space-x-2 text-slate-300">
@@ -764,7 +746,7 @@
             <!-- ==========================================
          VIEW: PIPELINE
          ========================================== -->
-    <div id="view-pipeline" class="tab-content-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
+    <div id="view-pipeline" class="tab-content-view absolute inset-0 lg:relative lg:inset-auto lg:flex-1 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
         <div class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 pb-[calc(80px+env(safe-area-inset-bottom))]">
                     <div class="max-w-4xl mx-auto space-y-6 w-full">
                         <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
@@ -871,7 +853,7 @@
     <!-- ==========================================
          VIEW: REGISTRY
          ========================================== -->
-    <div id="view-registry" class="tab-content-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
+    <div id="view-registry" class="tab-content-view absolute inset-0 lg:relative lg:inset-auto lg:flex-1 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
         <div class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 pb-[calc(80px+env(safe-area-inset-bottom))]">
                     <div id="corpus-directory-card"
                         class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2 max-w-4xl mx-auto w-full">
@@ -910,7 +892,7 @@
             <!-- ==========================================
          VIEW: ANALYTICS
          ========================================== -->
-    <div id="view-analytics" class="tab-content-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
+    <div id="view-analytics" class="tab-content-view absolute inset-0 lg:relative lg:inset-auto lg:flex-1 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
         <div class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 pb-[calc(80px+env(safe-area-inset-bottom))]">
                     <div class="max-w-5xl mx-auto space-y-6 w-full">
                         <div class="border-b border-slate-800/60 pb-4">
