@@ -222,6 +222,13 @@
                 }
             }
 
+            /* Enable internal scrolling for data views on mobile */
+            #view-pipeline.mobile-active-view,
+            #view-registry.mobile-active-view,
+            #view-analytics.mobile-active-view {
+                overflow-y: auto !important;
+            }
+
             /* LAYER 4: CHAT VIEW */
             #view-chat.mobile-active-view {
                 padding: 0 !important;
@@ -731,8 +738,8 @@
                 </div>
             </section>
 
-            <section id="panel-pipeline" class="absolute inset-0 flex flex-col min-h-0 w-full hidden">
-                <div id="view-pipeline" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
+            <section id="panel-pipeline" class="absolute inset-0 flex flex-col min-h-0 w-full hidden overflow-y-auto">
+                <div id="view-pipeline" class="tab-content-view w-full p-4 shrink-0">
                     <div class="max-w-4xl mx-auto space-y-6 w-full">
                         <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
                             <div>
@@ -832,7 +839,7 @@
                     </div>
                 </div>
 
-                <div id="view-registry" class="tab-content-view">
+                <div id="view-registry" class="tab-content-view w-full shrink-0 pb-10">
                     <div id="corpus-directory-card"
                         class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2 max-w-4xl mx-auto w-full">
                         <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
@@ -866,8 +873,8 @@
                 </div>
             </section>
 
-            <section id="panel-analytics" class="absolute inset-0 flex flex-col min-h-0 w-full hidden">
-                <div id="view-analytics" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
+            <section id="panel-analytics" class="absolute inset-0 flex flex-col min-h-0 w-full hidden overflow-y-auto">
+                <div id="view-analytics" class="tab-content-view w-full p-4 shrink-0">
                     <div class="max-w-5xl mx-auto space-y-6 w-full">
                         <div class="border-b border-slate-800/60 pb-4">
                             <h2 class="text-lg font-semibold text-slate-200">System Telemetry & Health</h2>
