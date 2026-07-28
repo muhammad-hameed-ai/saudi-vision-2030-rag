@@ -126,6 +126,12 @@
             display: none !important;
           }
 
+          /* Force-hide desktop-only header elements on mobile */
+          #connection-badge,
+          #top-header button[onclick="toggleSettingsModal()"] {
+            display: none !important;
+          }
+
           /* =============================================
              LAYER 2: FIXED TOP HEADER (60px)
              ============================================= */
@@ -189,24 +195,23 @@
             flex: 1 1 0% !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            justify-content: flex-start !important;
+            display: block !important;
             width: 100% !important;
-            min-height: 0 !important; /* Critical for flex children to scroll */
+            min-height: 0 !important;
             -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 60px !important; /* Space for fixed bottom nav */
+            padding-bottom: 60px !important;
           }
 
-          /* Force all panel sections to be visible and take full width */
+          /* === CRITICAL: Sections must NOT expand with flex-1 === */
+          /* On mobile, sections must shrink to their content height */
+          /* so content starts at the TOP, not the middle of the screen */
           #panel-chat,
           #panel-pipeline,
           #panel-analytics {
             display: block !important;
             width: 100% !important;
             height: auto !important;
-            min-height: auto !important;
+            min-height: 0 !important;
             max-height: none !important;
             overflow: visible !important;
             padding: 0 !important;
@@ -215,6 +220,17 @@
             opacity: 1 !important;
             position: relative !important;
             flex: none !important;
+            /* Kill desktop flex properties that push content down */
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+          }
+
+          /* The pipeline grid wrapper that contains both view-pipeline and view-registry */
+          #panel-pipeline > .max-w-4xl,
+          #panel-pipeline > div > .max-w-4xl {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
           /* Tab content view: hidden by default */
@@ -2440,33 +2456,47 @@
     // Core tab-switching function used by both bottom nav and drawer
     function activateMobileView(targetViewId) {
       const allViews = document.querySelectorAll('.tab-content-view');
-      const allSections = document.querySelectorAll('#mobile-scroll-stage > section');
       const allNavItems = document.querySelectorAll('.nav-tab-item');
       const allDrawerBtns = document.querySelectorAll('.drawer-nav-btn');
 
-      // 1. Hide all views and force-hide all parent sections
+      // 1. Remove mobile-active-view from ALL tab views
       allViews.forEach(v => {
         v.classList.remove('mobile-active-view');
         v.style.removeProperty('display');
       });
-      allSections.forEach(s => {
-        s.style.setProperty('display', 'none', 'important');
-      });
 
       // 2. Find and activate the target view
       const targetView = document.getElementById(targetViewId);
-      if (targetView) {
-        targetView.classList.add('mobile-active-view');
-        targetView.style.setProperty('display', 'flex', 'important');
+      if (!targetView) return;
 
-        // Force the parent section visible
-        const parentSection = targetView.closest('section');
-        if (parentSection) {
-          parentSection.style.setProperty('display', 'block', 'important');
-        }
+      targetView.classList.add('mobile-active-view');
+      targetView.style.setProperty('display', 'flex', 'important');
+
+      // 3. Handle section visibility
+      // Key insight: view-registry is INSIDE panel-pipeline section
+      // So panel-pipeline must be visible for BOTH pipeline and registry tabs
+      const panelChat = document.getElementById('panel-chat');
+      const panelPipeline = document.getElementById('panel-pipeline');
+      const panelAnalytics = document.getElementById('panel-analytics');
+
+      // Hide all sections first
+      if (panelChat) panelChat.style.setProperty('display', 'none', 'important');
+      if (panelPipeline) panelPipeline.style.setProperty('display', 'none', 'important');
+      if (panelAnalytics) panelAnalytics.style.setProperty('display', 'none', 'important');
+
+      // Show the correct parent section
+      if (targetViewId === 'view-chat' && panelChat) {
+        panelChat.style.setProperty('display', 'block', 'important');
+      } else if (targetViewId === 'view-pipeline' && panelPipeline) {
+        panelPipeline.style.setProperty('display', 'block', 'important');
+      } else if (targetViewId === 'view-registry' && panelPipeline) {
+        // Registry lives INSIDE panel-pipeline, so we must show panel-pipeline
+        panelPipeline.style.setProperty('display', 'block', 'important');
+      } else if (targetViewId === 'view-analytics' && panelAnalytics) {
+        panelAnalytics.style.setProperty('display', 'block', 'important');
       }
 
-      // 3. Sync bottom nav active state
+      // 4. Sync bottom nav active state
       allNavItems.forEach(nav => {
         if (nav.getAttribute('data-target-view') === targetViewId) {
           nav.classList.add('active');
@@ -2475,7 +2505,7 @@
         }
       });
 
-      // 4. Sync drawer nav active state
+      // 5. Sync drawer nav active state
       allDrawerBtns.forEach(btn => {
         if (btn.getAttribute('data-drawer-target') === targetViewId) {
           btn.classList.add('active');
@@ -2484,9 +2514,14 @@
         }
       });
 
-      // 5. Scroll the main stage to top
+      // 6. Scroll the main stage to top
       const scrollStage = document.getElementById('mobile-scroll-stage');
       if (scrollStage) scrollStage.scrollTop = 0;
+
+      // 7. If we just switched to registry, trigger data fetch
+      if (targetViewId === 'view-registry' && typeof fetchDocumentDirectory === 'function') {
+        fetchDocumentDirectory();
+      }
     }
 
     // Drawer nav button handler (switches tab + closes drawer)
