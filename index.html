@@ -542,6 +542,24 @@
                 display: none !important;
             }
         }
+
+        /* ==========================================================================
+           DESKTOP/TABLET LAYOUT STABILIZATION
+           ========================================================================== */
+        @media screen and (min-width: 1024px) {
+            /* Force tab contents to flow naturally on desktop to prevent them from slipping under the absolute bounds */
+            .tab-content-view {
+                position: relative !important;
+                inset: auto !important;
+                width: 100% !important;
+                flex: 1 !important;
+            }
+            #mobile-scroll-stage {
+                position: relative !important;
+                display: flex !important;
+                flex: 1 !important;
+            }
+        }
     </style>
 </head>
 
