@@ -625,10 +625,10 @@
 </head>
 
 <body
-    class="bg-[#060814] text-slate-100 h-screen overflow-hidden flex flex-col antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
+    class="bg-[#080c14] text-slate-100 flex flex-col h-[100dvh] w-full overflow-hidden antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
 
     <header id="top-header"
-        class="border-b border-slate-800/60 bg-[#090d1a]/80 backdrop-blur-md sticky top-0 z-40 px-6 h-16 shrink-0 flex items-center justify-between shadow-sm header">
+        class="flex-none h-14 w-full flex items-center justify-between px-4 border-b border-white/10 bg-[#0b0f19] z-50 shrink-0 header">
         <div class="flex items-center space-x-3 header-title-group">
             <div
                 class="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10 ring-1 ring-white/10">
@@ -641,31 +641,25 @@
             </div>
         </div>
 
-        <!-- Right side: Active Badge and New Hamburger Menu -->
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <!-- Keep only THIS Active Status Badge -->
-            <span class="status-badge-active block lg:hidden">• ACTIVE</span>
+        <!-- Right side: Active Badge and Hamburger Menu -->
+        <div class="flex items-center gap-3">
+            <!-- Unified Connection Badge -->
+            <div id="connection-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="relative flex h-1.5 w-1.5">
+                    <span id="ping-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span id="status-dot" class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                </span>
+                <span id="status-text" class="uppercase mono tracking-wide text-[10px]">ACTIVE</span>
+            </div>
             
             <!-- Hamburger Menu Button -->
-            <button id="mobile-menu-trigger" class="lg:hidden" style="background: transparent; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; outline: none;">
-              <svg viewBox="0 0 24 24" width="26" height="26" stroke="#f8fafc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <button id="mobile-menu-trigger" class="lg:hidden text-slate-400 hover:text-white p-1 outline-none flex items-center justify-center">
+              <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-
-            <!-- Desktop Connection Badge (Hidden on Mobile) -->
-            <div id="connection-badge"
-                class="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 transition-all duration-300">
-                <span class="relative flex h-2 w-2">
-                    <span id="ping-pulse"
-                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-                <span id="status-text"
-                    class="text-xs font-medium tracking-wide text-slate-300 uppercase mono">Connecting...</span>
-            </div>
             
             <!-- Desktop Settings Button (Hidden on Mobile) -->
             <button onclick="toggleSettingsModal()"
@@ -754,9 +748,9 @@
             </div>
         </aside>
 
-        <main id="mobile-scroll-stage" class="flex-1 flex flex-col overflow-hidden bg-[#0a0d1a] relative">
-            <section id="panel-chat" class="flex-1 flex flex-col overflow-hidden relative">
-                <div id="view-chat" class="tab-content-view mobile-active-view flex-1 flex flex-col overflow-hidden w-full h-full p-0! m-0!">
+        <main id="mobile-scroll-stage" class="flex-1 overflow-y-auto overflow-x-hidden w-full flex flex-col justify-start items-stretch relative">
+            <section id="panel-chat" class="w-full flex flex-col justify-start items-stretch">
+                <div id="view-chat" class="tab-content-view mobile-active-view flex flex-col w-full h-full p-0! m-0!">
                 <!-- Chat Action Header -->
                 <div
                     class="flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a] shrink-0">
@@ -830,7 +824,7 @@
                 </div>
             </section>
 
-            <section id="panel-pipeline" class="flex-1 overflow-y-auto p-6 hidden">
+            <section id="panel-pipeline" class="w-full flex flex-col justify-start items-stretch hidden">
                 <div id="view-pipeline" class="tab-content-view">
                 <div class="max-w-4xl mx-auto space-y-6">
                     <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
@@ -957,7 +951,7 @@
             </section>
 
             <!-- ANALYTICS DASHBOARD (Chart.js) -->
-            <section id="panel-analytics" class="flex-1 overflow-y-auto p-6 hidden">
+            <section id="panel-analytics" class="w-full flex flex-col justify-start items-stretch hidden">
                 <div id="view-analytics" class="tab-content-view">
                 <div class="max-w-5xl mx-auto space-y-6">
                     <div class="border-b border-slate-800/60 pb-4">
