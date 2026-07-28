@@ -192,10 +192,13 @@
              LAYER 3: SCROLLABLE MAIN VIEWPORT
              ============================================= */
           #mobile-scroll-stage {
-            flex: 1 1 0% !important;
+            flex: 1 1 auto !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-items: stretch !important;
             width: 100% !important;
             min-height: 0 !important;
             -webkit-overflow-scrolling: touch !important;
@@ -283,11 +286,16 @@
 
           /* Chat input area */
           #view-chat > div:last-child {
-            position: sticky !important;
-            bottom: 0 !important;
-            padding: 8px 12px !important;
-            background: linear-gradient(to top, #060814, #060814ee, transparent) !important;
-            z-index: 10 !important;
+            position: fixed !important;
+            bottom: 60px !important; /* Exactly above the 60px bottom nav */
+            left: 0 !important;
+            right: 0 !important;
+            padding: 10px 16px !important;
+            background: rgba(6, 8, 20, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            border-top: 1px solid rgba(30, 41, 59, 0.5) !important;
+            z-index: 100 !important;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5) !important;
           }
 
           #chat-form {
