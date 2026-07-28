@@ -663,7 +663,9 @@
         <main id="mobile-scroll-stage"
             class="flex-1 min-h-0 relative overflow-hidden w-full flex flex-col items-stretch">
 
-            <section id="panel-chat" class="absolute inset-0 flex flex-col min-h-0 w-full">
+            <!-- ==========================================
+         VIEW: CHAT
+         ========================================== -->
                 <div id="view-chat"
                     class="tab-content-view mobile-active-view flex flex-col w-full h-full min-h-0 p-0! m-0!">
                     <div
@@ -736,10 +738,13 @@
                         </div>
                     </div>
                 </div>
-            </section>
+            
 
-            <section id="panel-pipeline" class="absolute inset-0 flex flex-col min-h-0 w-full hidden overflow-y-auto">
-                <div id="view-pipeline" class="tab-content-view w-full p-4 shrink-0">
+            <!-- ==========================================
+         VIEW: PIPELINE
+         ========================================== -->
+                <div id="view-pipeline" class="tab-content-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
+        <div class="flex-1 min-h-0 overflow-y-auto w-full p-4 pb-[calc(80px+env(safe-area-inset-bottom))]">
                     <div class="max-w-4xl mx-auto space-y-6 w-full">
                         <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
                             <div>
@@ -839,7 +844,14 @@
                     </div>
                 </div>
 
-                <div id="view-registry" class="tab-content-view w-full shrink-0 pb-10">
+        </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW: REGISTRY
+         ========================================== -->
+    <div id="view-registry" class="tab-content-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
+        <div class="flex-1 min-h-0 overflow-y-auto w-full p-4 pb-[calc(80px+env(safe-area-inset-bottom))]">
                     <div id="corpus-directory-card"
                         class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2 max-w-4xl mx-auto w-full">
                         <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
@@ -871,10 +883,14 @@
                         </div>
                     </div>
                 </div>
-            </section>
+        </div>
+    </div>
 
-            <section id="panel-analytics" class="absolute inset-0 flex flex-col min-h-0 w-full hidden overflow-y-auto">
-                <div id="view-analytics" class="tab-content-view w-full p-4 shrink-0">
+            <!-- ==========================================
+         VIEW: ANALYTICS
+         ========================================== -->
+                <div id="view-analytics" class="tab-content-view absolute inset-0 flex flex-col w-full min-h-0 bg-[#080c14] hidden">
+        <div class="flex-1 min-h-0 overflow-y-auto w-full p-4 pb-[calc(80px+env(safe-area-inset-bottom))]">
                     <div class="max-w-5xl mx-auto space-y-6 w-full">
                         <div class="border-b border-slate-800/60 pb-4">
                             <h2 class="text-lg font-semibold text-slate-200">System Telemetry & Health</h2>
@@ -938,7 +954,8 @@
                         </div>
                     </div>
                 </div>
-            </section>
+        </div>
+    </div>
         </main>
     </div>
 
@@ -1262,17 +1279,20 @@
         function updateKValText(val) { document.getElementById("k-val-display").innerText = val; }
 
         function switchTab(targetTab) {
+            // Re-use activateMobileView for desktop to toggle views
+            activateMobileView(`view-${targetTab}`);
+            
+            // Sync desktop navigation styling
             ['chat', 'pipeline', 'analytics'].forEach(tab => {
-                const p = document.getElementById(`panel-${tab}`);
                 const b = document.getElementById(`tab-btn-${tab}`);
-                if (tab === targetTab) {
-                    p.classList.remove("hidden");
-                    b.classList.add("bg-slate-800/50", "text-emerald-400", "border-slate-700/50", "shadow-inner");
-                    b.classList.remove("text-slate-400", "hover:text-slate-200", "border-transparent");
-                } else {
-                    p.classList.add("hidden");
-                    b.classList.remove("bg-slate-800/50", "text-emerald-400", "border-slate-700/50", "shadow-inner");
-                    b.classList.add("text-slate-400", "hover:text-slate-200", "border-transparent");
+                if (b) {
+                    if (tab === targetTab) {
+                        b.classList.add("bg-slate-800/50", "text-emerald-400", "border-slate-700/50", "shadow-inner");
+                        b.classList.remove("text-slate-400", "hover:text-slate-200", "border-transparent");
+                    } else {
+                        b.classList.remove("bg-slate-800/50", "text-emerald-400", "border-slate-700/50", "shadow-inner");
+                        b.classList.add("text-slate-400", "hover:text-slate-200", "border-transparent");
+                    }
                 }
             });
             if (targetTab === 'pipeline') refreshPipelineData();
@@ -2205,33 +2225,15 @@
 
             allViews.forEach(v => {
                 v.classList.remove('mobile-active-view');
+                v.classList.add('hidden');
                 v.style.removeProperty('display');
             });
 
             const targetView = document.getElementById(targetViewId);
-            if (!targetView) return;
-
-            targetView.classList.add('mobile-active-view');
-            /* CRITICAL FIX: Ensure tab content view strictly uses flex[cite: 2] */
-            targetView.style.setProperty('display', 'flex', 'important');
-
-            const panelChat = document.getElementById('panel-chat');
-            const panelPipeline = document.getElementById('panel-pipeline');
-            const panelAnalytics = document.getElementById('panel-analytics');
-
-            if (panelChat) panelChat.style.setProperty('display', 'none', 'important');
-            if (panelPipeline) panelPipeline.style.setProperty('display', 'none', 'important');
-            if (panelAnalytics) panelAnalytics.style.setProperty('display', 'none', 'important');
-
-            /* CRITICAL FIX: Master sections must use display: flex, NOT block[cite: 2] */
-            if (targetViewId === 'view-chat' && panelChat) {
-                panelChat.style.setProperty('display', 'flex', 'important');
-            } else if (targetViewId === 'view-pipeline' && panelPipeline) {
-                panelPipeline.style.setProperty('display', 'flex', 'important');
-            } else if (targetViewId === 'view-registry' && panelPipeline) {
-                panelPipeline.style.setProperty('display', 'flex', 'important');
-            } else if (targetViewId === 'view-analytics' && panelAnalytics) {
-                panelAnalytics.style.setProperty('display', 'flex', 'important');
+            if (targetView) {
+                targetView.classList.add('mobile-active-view');
+                targetView.classList.remove('hidden');
+                targetView.style.setProperty('display', 'flex', 'important');
             }
 
             allNavItems.forEach(nav => {
