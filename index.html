@@ -39,7 +39,11 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Premium Custom Scrollbar */
+        /* CSS SAFETY NET */
+        html, body, #root { height: 100%; margin: 0; padding: 0; }
+        * { min-width: 0; }
+        
+        /* Custom scrollbar for webkit browsers */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -190,46 +194,12 @@
             white-space: nowrap !important;
           }
 
-          /* =============================================
+           /* =============================================
              LAYER 3: SCROLLABLE MAIN VIEWPORT
              ============================================= */
-          #mobile-scroll-stage {
-            flex: 1 1 auto !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-start !important;
-            align-items: stretch !important;
-            width: 100% !important;
-            height: calc(100dvh - 120px) !important; /* Total height minus Header (60px) and Bottom Nav (60px) */
-            min-height: 0 !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 32px !important;
-          }
+           /* mobile-scroll-stage and panel rules have been moved strictly to HTML Tailwind classes */
 
-          /* === CRITICAL: Sections must NOT expand with flex-1 === */
-          /* On mobile, sections must shrink to their content height */
-          /* so content starts at the TOP, not the middle of the screen */
-          #panel-chat,
-          #panel-pipeline,
-          #panel-analytics {
-            display: block !important;
-            width: 100% !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-            overflow: visible !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            position: relative !important;
-            flex: none !important;
-            /* Kill desktop flex properties that push content down */
-            align-items: stretch !important;
-            justify-content: flex-start !important;
-          }
+          /* Kill desktop flex properties that push content down */
 
           /* The pipeline grid wrapper that contains both view-pipeline and view-registry */
           #panel-pipeline > .max-w-4xl,
@@ -248,9 +218,8 @@
           .tab-content-view.mobile-active-view {
             display: flex !important;
             flex-direction: column !important;
-            justify-content: flex-start !important;
-            align-items: stretch !important;
             width: 100% !important;
+            min-height: 0 !important;
             margin: 0 !important;
             padding: 16px !important;
             gap: 16px !important;
@@ -288,20 +257,7 @@
             padding-bottom: 80px !important; /* Space for chat input */
           }
 
-          /* Chat input area */
-          #view-chat > div:last-child {
-            position: fixed !important;
-            bottom: 60px !important; /* Exactly above the 60px bottom nav */
-            left: 0 !important;
-            right: 0 !important;
-            padding: 10px 16px !important;
-            background: rgba(6, 8, 20, 0.95) !important;
-            backdrop-filter: blur(10px) !important;
-            border-top: 1px solid rgba(30, 41, 59, 0.5) !important;
-            z-index: 100 !important;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.5) !important;
-          }
-
+          /* Chat input area is now handled purely via flex-shrink-0 in DOM */
           #chat-form {
             border-radius: 16px !important;
           }
@@ -628,7 +584,7 @@
     class="bg-[#080c14] text-slate-100 flex flex-col h-[100dvh] w-full overflow-hidden antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
 
     <header id="top-header"
-        class="flex-none h-14 w-full flex items-center justify-between px-4 border-b border-white/10 bg-[#0b0f19] z-50 shrink-0 header">
+        class="flex-none h-14 w-full flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] border-b border-white/10 bg-[#0b0f19] z-50 shrink-0 header">
         <div class="flex items-center space-x-3 header-title-group">
             <div
                 class="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10 ring-1 ring-white/10">
@@ -698,7 +654,7 @@
             </div>
 
             <!-- Middle Section (Sessions) -->
-            <div class="flex-1 flex flex-col min-h-0 border-t border-slate-800/60 pt-5">
+            <div class="flex-1 flex flex-col min-h-0">
                 <div class="px-4 shrink-0 space-y-3 mb-3">
                     <p class="px-3 text-[10px] font-semibold text-slate-500 tracking-widest uppercase">Analytical
                         Sessions</p>
@@ -748,12 +704,12 @@
             </div>
         </aside>
 
-        <main id="mobile-scroll-stage" class="flex-1 overflow-y-auto overflow-x-hidden w-full flex flex-col justify-start items-stretch relative">
-            <section id="panel-chat" class="w-full flex flex-col justify-start items-stretch">
-                <div id="view-chat" class="tab-content-view mobile-active-view flex flex-col w-full h-full p-0! m-0!">
+        <main id="mobile-scroll-stage" class="flex-1 min-h-0 relative overflow-hidden w-full flex flex-col items-stretch">
+            <section id="panel-chat" class="w-full flex flex-col h-full min-h-0">
+                <div id="view-chat" class="tab-content-view mobile-active-view flex flex-col w-full h-full min-h-0 p-0! m-0!">
                 <!-- Chat Action Header -->
                 <div
-                    class="flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a] shrink-0">
+                    class="flex-shrink-0 flex justify-between items-center px-6 py-3 border-b border-slate-800/50 bg-[#0a0d1a]">
                     <div class="flex items-center space-x-2 text-slate-300">
                         <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
                         <span class="text-xs font-semibold uppercase tracking-wider">Active Policy Analysis</span>
@@ -767,7 +723,7 @@
                 </div>
 
                 <!-- SCROLLABLE CHAT THREAD -->
-                <div id="chat-thread" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
+                <div id="chat-thread" class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 space-y-6 scroll-smooth">
                     <div
                         class="max-w-3xl mx-auto border border-emerald-900/30 bg-gradient-to-b from-[#0e1626] to-[#0a0d1a] rounded-xl p-6 shadow-xl space-y-4">
                         <div class="flex items-center space-x-3 text-emerald-400">
@@ -804,7 +760,7 @@
 
                 <!-- STATIC INPUT AREA -->
                 <div
-                    class="shrink-0 bg-gradient-to-t from-[#060814] via-[#080b16] to-transparent pt-4 pb-4 px-4 md:px-6">
+                    class="flex-shrink-0 bg-gradient-to-t from-[#060814] via-[#080b16] to-transparent pt-4 pb-4 px-4 md:px-6 w-full z-50 border-t border-slate-800/50">
                     <div class="max-w-3xl mx-auto">
                         <form id="chat-form" onsubmit="submitQuery(event)"
                             class="relative flex items-end bg-slate-900/80 backdrop-blur-md border border-slate-700/60 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/20 rounded-xl transition-all shadow-2xl">
@@ -824,9 +780,9 @@
                 </div>
             </section>
 
-            <section id="panel-pipeline" class="w-full flex flex-col justify-start items-stretch hidden">
-                <div id="view-pipeline" class="tab-content-view">
-                <div class="max-w-4xl mx-auto space-y-6">
+            <section id="panel-pipeline" class="w-full flex flex-col h-full min-h-0 hidden">
+                <div id="view-pipeline" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
+                <div class="max-w-4xl mx-auto space-y-6 w-full">
                     <div class="flex items-center justify-between border-b border-slate-800/60 pb-4">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-200">Pipeline Architecture</h2>
@@ -951,9 +907,9 @@
             </section>
 
             <!-- ANALYTICS DASHBOARD (Chart.js) -->
-            <section id="panel-analytics" class="w-full flex flex-col justify-start items-stretch hidden">
-                <div id="view-analytics" class="tab-content-view">
-                <div class="max-w-5xl mx-auto space-y-6">
+            <section id="panel-analytics" class="w-full flex flex-col h-full min-h-0 hidden">
+                <div id="view-analytics" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
+                <div class="max-w-5xl mx-auto space-y-6 w-full">
                     <div class="border-b border-slate-800/60 pb-4">
                         <h2 class="text-lg font-semibold text-slate-200">System Telemetry & Health</h2>
                         <p class="text-xs text-slate-400 mt-1">Live operational metrics and visualization dashboard.</p>
