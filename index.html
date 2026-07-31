@@ -601,6 +601,11 @@
                         <i data-lucide="git-fork" class="w-4 h-4 group-hover:scale-105 transition-transform"></i>
                         <span>Pipeline Engineering</span>
                     </button>
+                    <button onclick="switchTab('registry')" id="tab-btn-registry"
+                        class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group cursor-pointer text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent">
+                        <i data-lucide="database" class="w-4 h-4 group-hover:scale-105 transition-transform"></i>
+                        <span>Corpus Registry</span>
+                    </button>
                     <button onclick="switchTab('analytics')" id="tab-btn-analytics"
                         class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group cursor-pointer text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent">
                         <i data-lucide="activity" class="w-4 h-4 group-hover:scale-105 transition-transform"></i>
@@ -831,36 +836,43 @@
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div id="view-registry" class="tab-content-view">
-                    <div id="corpus-directory-card"
-                        class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm col-span-1 lg:col-span-2 mt-2 max-w-4xl mx-auto w-full">
-                        <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
-                            <div class="flex items-center space-x-2">
-                                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-                                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Corpus
-                                    Registry & Control Center</h3>
+            <!-- ==========================================
+                 VIEW: REGISTRY (Strict Sibling - Isolated from Pipeline)
+                 ========================================== -->
+            <section id="panel-registry" class="absolute inset-0 flex flex-col min-h-0 w-full hidden">
+                <div id="view-registry" class="tab-content-view flex-1 min-h-0 overflow-y-auto w-full p-4">
+                    <div class="max-w-4xl mx-auto w-full">
+                        <div id="corpus-directory-card"
+                            class="p-6 rounded-xl bg-slate-900/30 border border-slate-800/80 shadow-sm mt-2 w-full">
+                            <div class="flex items-center justify-between border-b border-slate-800/50 pb-3 mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                                    <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Corpus
+                                        Registry & Control Center</h3>
+                                </div>
+                                <div class="relative">
+                                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-500"></i>
+                                    <input type="text" id="document-search" placeholder="Search registry..."
+                                        class="pl-8 pr-3 py-1.5 bg-slate-900/50 border border-slate-700/60 rounded-md text-xs text-slate-300 focus:outline-none focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 w-48">
+                                </div>
                             </div>
-                            <div class="relative">
-                                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-500"></i>
-                                <input type="text" id="document-search" placeholder="Search registry..."
-                                    class="pl-8 pr-3 py-1.5 bg-slate-900/50 border border-slate-700/60 rounded-md text-xs text-slate-300 focus:outline-none focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 w-48">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm whitespace-nowrap">
+                                    <thead
+                                        class="uppercase tracking-wider text-[10px] font-semibold text-slate-400 border-b border-slate-800/60">
+                                        <tr>
+                                            <th class="pb-3 px-2">Document Name</th>
+                                            <th class="pb-3 px-2 text-right">Total Chunks</th>
+                                            <th class="pb-3 px-2 text-center">Vector Status</th>
+                                            <th class="pb-3 px-2 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="registry-table-body" class="divide-y divide-slate-800/40 text-slate-300">
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm whitespace-nowrap">
-                                <thead
-                                    class="uppercase tracking-wider text-[10px] font-semibold text-slate-400 border-b border-slate-800/60">
-                                    <tr>
-                                        <th class="pb-3 px-2">Document Name</th>
-                                        <th class="pb-3 px-2 text-right">Total Chunks</th>
-                                        <th class="pb-3 px-2 text-center">Vector Status</th>
-                                        <th class="pb-3 px-2 text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="registry-table-body" class="divide-y divide-slate-800/40 text-slate-300">
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 </div>
@@ -1255,20 +1267,24 @@
         function updateKValText(val) { document.getElementById("k-val-display").innerText = val; }
 
         function switchTab(targetTab) {
-            ['chat', 'pipeline', 'analytics'].forEach(tab => {
+            ['chat', 'pipeline', 'registry', 'analytics'].forEach(tab => {
                 const p = document.getElementById(`panel-${tab}`);
                 const b = document.getElementById(`tab-btn-${tab}`);
-                if (tab === targetTab) {
+                if (p && tab === targetTab) {
                     p.classList.remove("hidden");
+                } else if (p) {
+                    p.classList.add("hidden");
+                }
+                if (b && tab === targetTab) {
                     b.classList.add("bg-slate-800/50", "text-emerald-400", "border-slate-700/50", "shadow-inner");
                     b.classList.remove("text-slate-400", "hover:text-slate-200", "border-transparent");
-                } else {
-                    p.classList.add("hidden");
+                } else if (b) {
                     b.classList.remove("bg-slate-800/50", "text-emerald-400", "border-slate-700/50", "shadow-inner");
                     b.classList.add("text-slate-400", "hover:text-slate-200", "border-transparent");
                 }
             });
             if (targetTab === 'pipeline') refreshPipelineData();
+            if (targetTab === 'registry' && typeof fetchDocumentDirectory === 'function') fetchDocumentDirectory();
             if (targetTab === 'analytics') refreshAnalyticsDashboard();
         }
 
@@ -2210,19 +2226,21 @@
 
             const panelChat = document.getElementById('panel-chat');
             const panelPipeline = document.getElementById('panel-pipeline');
+            const panelRegistry = document.getElementById('panel-registry');
             const panelAnalytics = document.getElementById('panel-analytics');
 
             if (panelChat) panelChat.style.setProperty('display', 'none', 'important');
             if (panelPipeline) panelPipeline.style.setProperty('display', 'none', 'important');
+            if (panelRegistry) panelRegistry.style.setProperty('display', 'none', 'important');
             if (panelAnalytics) panelAnalytics.style.setProperty('display', 'none', 'important');
 
-            /* CRITICAL FIX: Master sections must use display: flex, NOT block[cite: 2] */
+            /* Each view maps to its OWN isolated panel section */
             if (targetViewId === 'view-chat' && panelChat) {
                 panelChat.style.setProperty('display', 'flex', 'important');
             } else if (targetViewId === 'view-pipeline' && panelPipeline) {
                 panelPipeline.style.setProperty('display', 'flex', 'important');
-            } else if (targetViewId === 'view-registry' && panelPipeline) {
-                panelPipeline.style.setProperty('display', 'flex', 'important');
+            } else if (targetViewId === 'view-registry' && panelRegistry) {
+                panelRegistry.style.setProperty('display', 'flex', 'important');
             } else if (targetViewId === 'view-analytics' && panelAnalytics) {
                 panelAnalytics.style.setProperty('display', 'flex', 'important');
             }
