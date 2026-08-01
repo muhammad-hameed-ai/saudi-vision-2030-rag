@@ -535,6 +535,9 @@
                 display: none !important;
             }
         }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 
@@ -585,7 +588,7 @@
 
     <div class="flex flex-1 overflow-hidden">
         <aside
-            class="w-72 border-r border-slate-800/60 bg-[#080b16] flex flex-col hidden lg:flex z-10 shrink-0 h-screen overflow-hidden">
+            class="w-72 border-r border-slate-800/60 bg-[#080b16] flex flex-col hidden lg:flex z-10 shrink-0 h-full overflow-hidden">
             <div class="p-4 shrink-0 space-y-2">
                 <p class="px-3 text-[10px] font-semibold text-slate-500 tracking-widest uppercase">Navigation Matrices
                 </p>
@@ -626,7 +629,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto px-7 pb-4">
+                <div class="flex-1 overflow-y-auto px-7 pb-4 scrollbar-hide">
                     <ul id="session-list" class="space-y-1"></ul>
                 </div>
             </div>
@@ -674,7 +677,7 @@
                     </div>
 
                     <div id="chat-thread"
-                        class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 space-y-6 scroll-smooth">
+                        class="flex-1 min-h-0 overflow-y-auto w-full p-4 md:p-6 space-y-6 scroll-smooth pb-32">
                         <div
                             class="max-w-3xl mx-auto border border-emerald-900/30 bg-gradient-to-b from-[#0e1626] to-[#0a0d1a] rounded-xl p-6 shadow-xl space-y-4">
                             <div class="flex items-center space-x-3 text-emerald-400">
@@ -1625,16 +1628,9 @@
             currentLoadId = loadId;
             appendLoaderBlock(loadId);
             currentAbortController = new AbortController();
-            let elapsedSec = 0;
-            const clockTimer = setInterval(() => {
-                elapsedSec++;
-                const timerText = document.getElementById(`timer-${loadId}`);
-                if (timerText) timerText.innerText = `Inference Active: ${elapsedSec}s`;
-            }, 1000);
 
             const kDepth = parseInt(document.getElementById("param-k").value) || 3;
             let botMessageContainer = null;
-            let bubbleTimerId = null;
 
             try {
                 const response = await fetch(`${BASE_BACKEND_URL}/api/chat`, {
@@ -1645,7 +1641,6 @@
                     signal: currentAbortController.signal
                 });
 
-                clearInterval(clockTimer);
                 const block = document.getElementById(loadId);
                 if (block) block.remove();
                 currentLoadId = null;
@@ -1664,12 +1659,7 @@
                 let currentTelemetry = {};
                 botMessageContainer = createEmptyBotMessageElement();
 
-                let bubbleTimerVal = 0;
-                bubbleTimerId = setInterval(() => {
-                    bubbleTimerVal += 0.1;
-                    const timerSpan = document.getElementById(`timer-${botMessageContainer.id}`);
-                    if (timerSpan) timerSpan.innerText = `Generating response... ${bubbleTimerVal.toFixed(1)}s`;
-                }, 100);
+
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -1707,7 +1697,6 @@
                     }
                 }
             } catch (error) {
-                clearInterval(clockTimer);
                 const block = document.getElementById(loadId);
                 if (block) block.remove();
                 currentLoadId = null;
@@ -1721,7 +1710,6 @@
                 }
                 appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running.");
             } finally {
-                if (bubbleTimerId) clearInterval(bubbleTimerId);
                 currentAbortController = null;
                 isSubmitting = false;
                 inputField.disabled = false;
@@ -1751,7 +1739,7 @@
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                             </span>
-                            <span id="timer-${chunk.id}">Generating response... 0.0s</span>
+                            <span>Synthesizing Response<span class="inline-flex ml-1"><span class="animate-bounce" style="animation-delay:0s">.</span><span class="animate-bounce" style="animation-delay:0.15s">.</span><span class="animate-bounce" style="animation-delay:0.3s">.</span></span></span>
                         </div>
                     </div>
                     <div class="citations-box mt-5 pt-4 border-t border-slate-800/60 hidden">
@@ -1842,14 +1830,21 @@
             chunk.id = id;
             chunk.className = "flex space-x-4 max-w-3xl mx-auto w-full mb-6";
             chunk.innerHTML = `
-                <div class="h-9 w-9 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-teal-400 shrink-0 shadow-inner mt-1">
-                    <i data-lucide="cpu" class="w-5 h-5 animate-pulse"></i>
+                <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center text-white shrink-0 shadow-lg shadow-teal-900/20 ring-1 ring-white/10 mt-1">
+                    <i data-lucide="cpu" class="w-4 h-4 animate-spin" style="animation-duration: 3s"></i>
                 </div>
-                <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-400 max-w-[80%] w-full space-y-3 shadow-sm">
-                    <div id="timer-${id}" class="text-[10px] font-semibold uppercase tracking-widest text-teal-500/70 mono animate-pulse">Initializing Vector Search...</div>
-                    <div class="space-y-2">
-                        <div class="w-3/4 bg-slate-800/50 h-2 rounded animate-pulse"></div>
-                        <div class="w-1/2 bg-slate-800/50 h-2 rounded animate-pulse"></div>
+                <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl rounded-tl-sm p-5 text-sm text-slate-400 max-w-[80%] w-full space-y-3 shadow-sm">
+                    <div class="flex items-center space-x-2">
+                        <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-teal-400 mono">Querying Vector Core<span class="inline-flex ml-0.5"><span class="animate-bounce" style="animation-delay:0s">.</span><span class="animate-bounce" style="animation-delay:0.15s">.</span><span class="animate-bounce" style="animation-delay:0.3s">.</span></span></span>
+                    </div>
+                    <div class="space-y-2.5">
+                        <div class="w-4/5 bg-slate-800/60 h-2 rounded-full animate-pulse"></div>
+                        <div class="w-3/5 bg-slate-800/60 h-2 rounded-full animate-pulse" style="animation-delay: 0.15s"></div>
+                        <div class="w-2/5 bg-slate-800/60 h-2 rounded-full animate-pulse" style="animation-delay: 0.3s"></div>
                     </div>
                 </div>
             `;
@@ -1888,15 +1883,6 @@
                 citationsHtml += `</div></div>`;
             }
 
-            let tps = 0;
-            const approxTokens = data.answer.length / 4;
-            if (data.metrics && data.metrics.latency_seconds > 0) tps = (approxTokens / data.metrics.latency_seconds).toFixed(1);
-            let telemetryLabel = `<div class="text-[9px] font-medium text-slate-500 flex justify-end items-center space-x-3 mono mt-4 pt-3 border-t border-slate-800/50 opacity-80">
-                <span>Latency: ${data.metrics?.latency_seconds || '--'}s</span>
-                <span>Depth: ${data.metrics?.reranked_k || '--'} chunks</span>
-                <span class="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">Vel: ${tps} t/s</span>
-            </div>`;
-
             chunk.innerHTML = `
                 <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-900/20 ring-1 ring-white/10 mt-1">
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
@@ -1909,7 +1895,6 @@
                     </div>
                     <div class="prose prose-invert prose-emerald max-w-none text-sm pr-6">${cleanHtml}</div>
                     ${citationsHtml}
-                    ${telemetryLabel}
                 </div>
             `;
             thread.appendChild(chunk);
@@ -1918,11 +1903,10 @@
         }
 
         function appendTelemetryFooter(container, payload) {
-            const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+            const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const footer = document.createElement("div");
             footer.className = "flex items-center justify-between border-t border-emerald-900/30 pt-2 mt-4 text-[11px] font-medium text-emerald-500/70 tracking-wide";
             footer.innerHTML = `
-                <div class="flex items-center gap-1.5"><i data-lucide="timer" class="w-3.5 h-3.5"></i> <span>${payload.generation_time}s Generation</span></div>
                 <div class="flex items-center gap-1.5"><i data-lucide="search" class="w-3.5 h-3.5"></i> <span>Depth: K=${payload.retrieval_k}</span></div>
                 <div class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> <span>${timestamp}</span></div>
             `;
@@ -2257,6 +2241,40 @@
 
             if (window.innerWidth <= 768) activateMobileView('view-chat');
         });
+
+        /* =========================================================
+           TOUCH-SWIPE GESTURE ENGINE
+           ========================================================= */
+        (function() {
+            const swipeTarget = document.getElementById('mobile-scroll-stage');
+            if (!swipeTarget) return;
+            const viewOrder = ['view-chat', 'view-pipeline', 'view-analytics'];
+            let touchStartX = 0;
+            let touchStartY = 0;
+            const SWIPE_THRESHOLD = 50;
+
+            swipeTarget.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            swipeTarget.addEventListener('touchend', function(e) {
+                const deltaX = e.changedTouches[0].screenX - touchStartX;
+                const deltaY = e.changedTouches[0].screenY - touchStartY;
+                if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+                const activeNav = document.querySelector('.nav-tab-item.active');
+                const currentView = activeNav ? activeNav.getAttribute('data-target-view') : 'view-chat';
+                const currentIndex = viewOrder.indexOf(currentView);
+                if (currentIndex === -1) return;
+
+                let nextIndex;
+                if (deltaX < 0) nextIndex = Math.min(currentIndex + 1, viewOrder.length - 1);
+                else nextIndex = Math.max(currentIndex - 1, 0);
+
+                if (nextIndex !== currentIndex) activateMobileView(viewOrder[nextIndex]);
+            }, { passive: true });
+        })();
     </script>
 </body>
 
