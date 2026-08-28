@@ -112,7 +112,7 @@ async def summarize_history(session_id: str):
         from groq import AsyncGroq
         client = AsyncGroq(api_key=api_key, timeout=15.0)
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="allam-2-7b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
             temperature=0.3,

@@ -144,7 +144,7 @@ def get_pipeline_lock() -> asyncio.Lock:
     return _rag_pipeline_lock
 
 # Cloud LLM Settings
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = "allam-2-7b"
 
 SYSTEM_PROMPT_TEMPLATE = """You are a Data Extraction Engine and Subject Matter Expert for Saudi Vision 2030.
 

@@ -30,7 +30,7 @@ async def generate_hypothesis(query: str) -> str:
     try:
         client = AsyncGroq(api_key=api_key, timeout=15.0)
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="allam-2-7b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=100,
             temperature=0.3,
