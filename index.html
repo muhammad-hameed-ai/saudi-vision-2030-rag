@@ -1664,15 +1664,22 @@
 
 
                 while (true) {
+                    let timeoutId;
                     const readPromise = reader.read();
                     const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error("StreamTimeout")), 15000);
+                        timeoutId = setTimeout(() => reject(new Error("StreamTimeout")), 45000); // 45s for cold start
                     });
                     
-                    const { value, done } = await Promise.race([readPromise, timeoutPromise]);
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
+                    try {
+                        const { value, done } = await Promise.race([readPromise, timeoutPromise]);
+                        clearTimeout(timeoutId);
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                    } catch (err) {
+                        clearTimeout(timeoutId);
+                        throw err;
+                    }
                     const lines = buffer.split("\n\n");
                     buffer = lines.pop();
 
