@@ -1664,7 +1664,12 @@
 
 
                 while (true) {
-                    const { value, done } = await reader.read();
+                    const readPromise = reader.read();
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error("StreamTimeout")), 15000);
+                    });
+                    
+                    const { value, done } = await Promise.race([readPromise, timeoutPromise]);
                     if (done) break;
 
                     buffer += decoder.decode(value, { stream: true });
@@ -1709,8 +1714,11 @@
                         sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
                     }
                     return;
+                } else if (error.message === 'StreamTimeout') {
+                    appendErrorBlock("Stream interrupted. The cloud backend encountered an unexpected crash (OOMKill) and disconnected.");
+                } else {
+                    appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running.");
                 }
-                appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running.");
             } finally {
                 currentAbortController = null;
                 window.isGenerating = false;
@@ -2226,7 +2234,11 @@
             if (chatForm) {
                 chatForm.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    if (!isSubmitting) submitQuery(e);
+                    if (isSubmitting) {
+                        if (currentAbortController) currentAbortController.abort();
+                        return;
+                    }
+                    submitQuery(e);
                 });
             }
 
@@ -2239,7 +2251,11 @@
                 sendBtnEl.addEventListener('touchend', function(e) {
                     e.preventDefault();
                     touchHandled = true;
-                    if (!isSubmitting) submitQuery(e);
+                    if (isSubmitting) {
+                        if (currentAbortController) currentAbortController.abort();
+                    } else {
+                        submitQuery(e);
+                    }
                     /* Reset after the browser's click synthesis window (300ms) */
                     setTimeout(() => { touchHandled = false; }, 400);
                 }, { passive: false });
@@ -2247,7 +2263,11 @@
                 sendBtnEl.addEventListener('click', function(e) {
                     if (touchHandled) return; /* Skip — already handled by touchend */
                     e.preventDefault();
-                    if (!isSubmitting) submitQuery(e);
+                    if (isSubmitting) {
+                        if (currentAbortController) currentAbortController.abort();
+                    } else {
+                        submitQuery(e);
+                    }
                 });
             }
 

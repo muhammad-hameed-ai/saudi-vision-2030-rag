@@ -389,7 +389,8 @@ async def generate_rag_stream(request: ChatRequest):
         lock = get_pipeline_lock()
         async with lock:
             candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
-            reranked = await asyncio.to_thread(reranker_obj.rerank, query, candidates, top_k=top_k)
+            # Bypass memory-heavy ONNX cross-encoder to prevent Render 512MB OOM crash
+            reranked = candidates[:top_k]
 
         source_citations = []
         for chunk in reranked:
@@ -501,7 +502,8 @@ async def ask(request: Request, payload: ChatRequest, background_tasks: Backgrou
         search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
         
         candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
-        reranked = await asyncio.to_thread(reranker_obj.rerank, payload.question, candidates, top_k=payload.k)
+        # Bypass memory-heavy ONNX cross-encoder to prevent Render 512MB OOM crash
+        reranked = candidates[:payload.k]
 
         memory_str = await _build_memory_string(payload.session_id)
         context_text = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
