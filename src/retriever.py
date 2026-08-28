@@ -9,8 +9,7 @@ import traceback
 import httpx
 from dataclasses import dataclass, field
 from typing import List, Optional
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
-from fastembed import SparseTextEmbedding
+from fastembed import TextEmbedding, SparseTextEmbedding
 from qdrant_client import QdrantClient, models
 
 logger = logging.getLogger("vision2030.retriever")
@@ -86,14 +85,11 @@ class HybridRetriever:
                 raise QdrantUnavailableError(f"Cannot bind socket to Qdrant cluster host: {e}")
         return self._client
 
-    def _get_dense_model(self) -> HuggingFaceEndpointEmbeddings:
-        """Initializes serverless cloud embedding client to eliminate local RAM usage spikes."""
+    def _get_dense_model(self) -> TextEmbedding:
+        """Initializes local FastEmbed dense embedding model (zero external API dependency)."""
         if self._dense_model is None:
-            print("[INFO] Mounting serverless inference handler: sentence-transformers/all-MiniLM-L6-v2")
-            self._dense_model = HuggingFaceEndpointEmbeddings(
-                model="sentence-transformers/all-MiniLM-L6-v2",
-                huggingfacehub_api_token=os.getenv("HF_TOKEN"),
-            )
+            print("[INFO] Loading local dense embedding model: sentence-transformers/all-MiniLM-L6-v2")
+            self._dense_model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
         return self._dense_model
 
     def _get_sparse_model(self) -> SparseTextEmbedding:
@@ -211,7 +207,7 @@ class HybridRetriever:
         texts = [chunk["text"] for chunk in chunks]
         
         # 1. Generate Dense Vectors
-        dense_vectors = self._get_dense_model().embed_documents(texts)
+        dense_vectors = list(self._get_dense_model().embed(texts))
         
         # 2. Generate Sparse Vectors
         sparse_embeddings = list(self._get_sparse_model().embed(texts))
@@ -256,8 +252,8 @@ class HybridRetriever:
             raise QdrantUnavailableError(str(e))
 
         try:
-            # 1. Dispatch cloud request for dense matrix vectors
-            dense_vector = self._get_dense_model().embed_query(query)
+            # 1. Generate dense embedding vector locally
+            dense_vector = list(self._get_dense_model().embed([query]))[0]
 
             # 2. Local vocabulary tokenizer tokenization for keywords
             sparse_result = list(self._get_sparse_model().embed([query]))[0]

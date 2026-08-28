@@ -8,8 +8,6 @@ slowapi
 # --- Vector DB & Retrieval ---
 qdrant-client>=1.7.0
 fastembed>=0.2.0
-langchain-huggingface
-langchain-community
 # --- Cloud LLM ---
 groq>=0.4.0
 PyMuPDF

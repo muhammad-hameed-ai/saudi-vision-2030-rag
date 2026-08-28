@@ -266,7 +266,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8000", 
         "http://127.0.0.1:8000", 
-        "https://saudi-vision-2030-rag-3.onrender.com" # Render production URL
+        "https://saudi-vision-2030-rag-3.onrender.com",
+        "https://muhammad-hameed-ai.github.io",
+        "*",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
