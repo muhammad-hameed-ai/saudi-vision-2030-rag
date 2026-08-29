@@ -225,42 +225,30 @@ the `ci_quality_gate` output.
 
 ---
 
-## TASK 2 (SECONDARY, OPTIONAL) — Fix embedding truncation
+## TASK 2 — RESOLVED, DO NOT ATTEMPT
 
-**Files:** `params.yaml`, then a full re-index.
+An earlier version of this brief asked for `chunk_size` to be reduced from 1000 to 700
+followed by a full re-index, on the grounds that chunks were being truncated at the
+model's 256-token ceiling. **That diagnosis was wrong and the task has been withdrawn.**
 
-**The problem.** `chunk_size: 1000` characters is roughly 250 tokens, against
-`all-MiniLM-L6-v2`'s **256-token ceiling**. The longest chunks are silently truncated
-during embedding, so their final portion is not represented in the vector at all.
+What was actually true, measured against the live cluster:
 
-Measured against the live corpus by re-embedding stored chunks and comparing:
+* The corpus was indexed at a 256-token window and the mean chunk is 197 tokens, so
+  nothing was being truncated. The corpus is intact.
+* FastEmbed defaults to a **128-token** window. That is what produced the apparent
+  "truncation" — the measuring tool was narrower than the corpus, not the reverse.
+* At 128, FastEmbed did not reproduce the stored vectors: mean cosine 0.949, worst
+  0.876. At 256 it reproduces them exactly: 1.0000 mean, 1.0000 minimum.
+* Short query vectors are bit-identical at either width, so no re-index was needed.
 
-| Chunk length | Self-similarity |
-| :--- | ---: |
-| ≤ 100 tokens | 1.0000 |
-| ~210 tokens | 0.96–0.98 |
-| ~240–248 tokens | 0.88–0.96 |
+The fix is `HybridRetriever.EMBED_MAX_TOKENS = 256`, applied in `src/retriever.py` and
+reused by `src/create_embeddings.py`. This also corrected two real defects: documents
+uploaded through the web console were getting vectors inconsistent with the corpus, and
+questions longer than ~630 characters were being cut before embedding even though the
+API accepts 1000.
 
-**Only attempt this if Task 1 is complete**, so the change can be measured.
-
-**Procedure:**
-
-1. Edit `params.yaml`: `chunk_size: 1000` → `700`, keep `chunk_overlap: 200`.
-2. Rebuild chunks: `dvc repro` (requires `data/raw_pdfs/` present locally —
-   `dvc pull` first if missing).
-3. Dry run: `python -m src.create_embeddings --dry-run` — confirm the target is the
-   **cloud** URL and note the new chunk count.
-4. Full rebuild: `python -m src.create_embeddings --recreate` (it will prompt for the
-   collection name).
-5. Verify the collection: point count, `status: green`, and both payload indexes
-   present as **keyword**.
-6. Re-run Task 1's evaluation and compare.
-7. Update the corpus figures in `README.md` and `OPERATIONS.md`.
-
-**Risk:** this destroys and rebuilds the live collection. The service returns 503
-while it runs. Do not start it without confirming `data/raw_pdfs/` is present.
-
----
+**Do not reduce `chunk_size` and do not re-index.** Doing so would rebuild the corpus
+for no benefit and take the service down while it ran.
 
 ## WHAT IS NOT LEFT TO DO
 

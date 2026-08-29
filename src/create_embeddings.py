@@ -32,6 +32,8 @@ from dotenv import load_dotenv
 from fastembed import TextEmbedding, SparseTextEmbedding
 from qdrant_client import QdrantClient, models
 
+from src.retriever import HybridRetriever
+
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 DENSE_DIMENSIONS = 384
@@ -165,6 +167,9 @@ def main():
     sparse_name = embed_cfg.get("sparse_model", "Qdrant/bm25")
     print(f"\nLoading embedding models ({dense_name} + {sparse_name})...")
     dense_model = TextEmbedding(dense_name)
+    # Match the width the serving path and the existing corpus use, or newly indexed
+    # chunks get vectors inconsistent with everything already stored.
+    HybridRetriever._widen_window(dense_model)
     sparse_model = SparseTextEmbedding(sparse_name)
 
     client = QdrantClient(url=url, api_key=api_key, timeout=120)

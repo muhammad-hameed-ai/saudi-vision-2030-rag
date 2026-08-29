@@ -93,20 +93,23 @@ python -m src.create_embeddings            # idempotent upsert, keeps existing p
 collection name before deleting anything. Use it only when the corpus must be rebuilt
 wholesale — for example after changing `chunk_size`, or if the cluster is lost.
 
-Embeddings come from FastEmbed, matching the query path. Do not mix in vectors
-produced by `langchain` `HuggingFaceEmbeddings`: the two truncate differently and
-disagree measurably (cosine ~0.91) on chunks near the model's 256-token limit.
+Embeddings come from FastEmbed with the window pinned to 256 tokens, matching the
+query path and the existing corpus. Do not index with the default 128-token window --
+those vectors disagree with everything already stored.
 
-## Known quality limitation
+## Embedding window
 
-`chunk_size: 1000` characters is roughly 250 tokens, which sits on top of
-all-MiniLM-L6-v2's 256-token ceiling. Long chunks are silently truncated during
-embedding, so their final portion is not represented in the vector. Short chunks
-re-embed with cosine 1.0000; the longest measured drop to 0.88.
+`all-MiniLM-L6-v2` was trained with a 256-token window and the corpus was indexed at
+that width. The mean chunk is 197 tokens, so chunks fit and nothing is being lost.
 
-Lowering `chunk_size` to ~700 characters would keep every chunk inside the window, at
-the cost of a full re-index. Not done here because it changes retrieval behaviour and
-should be evaluated deliberately.
+FastEmbed, however, defaults to a **128-token** window. At that width it does not
+reproduce the stored vectors (mean cosine 0.949, worst 0.876) and it truncates long
+questions before they are embedded. `HybridRetriever.EMBED_MAX_TOKENS = 256` pins it
+to the corpus width, where FastEmbed reproduces stored vectors exactly (cosine 1.0000)
+and short query vectors are bit-identical — so no re-index was required.
+
+If the embedding model is ever changed, check its trained window and set
+`EMBED_MAX_TOKENS` to match before indexing anything.
 
 ## Health checks
 

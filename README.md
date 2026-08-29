@@ -184,7 +184,7 @@ The same retrieval takes **235 ms locally** — 184 ms of Qdrant round trip plus
 | National strategy for data & AI | 277 | 4.4% |
 | *44 further documents* | | |
 
-**Known limitation:** 1,000 characters is roughly 250 tokens against MiniLM's 256-token ceiling, so the longest chunks are truncated during embedding. Short chunks re-embed at cosine 1.0000; the longest measure 0.88. Reducing `chunk_size` would resolve this at the cost of a full re-index.
+**Embedding window.** `all-MiniLM-L6-v2` was trained with a 256-token window and the corpus was indexed at that width; the mean chunk is 197 tokens, so it fits. FastEmbed defaults to a 128-token window, which does not match the stored vectors (mean cosine 0.949, worst 0.876) and truncates long questions before embedding. `HybridRetriever.EMBED_MAX_TOKENS` pins it to 256, at which FastEmbed reproduces the stored corpus exactly (cosine 1.0000) while leaving short query vectors bit-identical.
 
 ---
 
@@ -293,7 +293,7 @@ python -m src.create_embeddings            # idempotent upsert
 python -m src.create_embeddings --recreate # destructive, prompts to confirm
 ```
 
-Embeddings must come from FastEmbed throughout. Mixing in vectors from langchain's `HuggingFaceEmbeddings` corrupts similarity — the two agree exactly on short chunks but diverge to cosine ~0.91 near the token limit.
+Embeddings must come from FastEmbed with the window pinned to 256 tokens, which `create_embeddings.py` does via `HybridRetriever._widen_window`. At FastEmbed's default 128 the vectors disagree with the existing corpus (worst cosine 0.876); at 256 they match it exactly.
 
 ---
 

@@ -86,12 +86,34 @@ class HybridRetriever:
                 raise QdrantUnavailableError(f"Cannot bind socket to Qdrant cluster host: {e}")
         return self._client
 
+    # all-MiniLM-L6-v2 was trained with a 256-token window and the corpus was indexed
+    # at that width. FastEmbed defaults to 128, which silently discards the second half
+    # of anything longer -- it does not match the stored vectors (mean cosine 0.949,
+    # worst 0.876) and it truncates long questions before they are ever embedded. At 256
+    # FastEmbed reproduces the stored corpus exactly (cosine 1.0000) while leaving short
+    # query vectors bit-identical, so this needs no re-index.
+    EMBED_MAX_TOKENS = 256
+
     def _get_dense_model(self) -> TextEmbedding:
         """Initializes local FastEmbed dense embedding model (zero external API dependency)."""
         if self._dense_model is None:
             print("[INFO] Loading local dense embedding model: sentence-transformers/all-MiniLM-L6-v2")
-            self._dense_model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
+            model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
+            self._widen_window(model)
+            self._dense_model = model
         return self._dense_model
+
+    @classmethod
+    def _widen_window(cls, model) -> None:
+        """Aligns the tokenizer window with the width the corpus was indexed at."""
+        try:
+            tokenizer = model.model.tokenizer
+            tokenizer.enable_truncation(max_length=cls.EMBED_MAX_TOKENS)
+            tokenizer.enable_padding(length=cls.EMBED_MAX_TOKENS)
+            logger.info(f"[Retriever] Embedding window set to {cls.EMBED_MAX_TOKENS} tokens.")
+        except Exception as e:
+            # Non-fatal: retrieval still works at the default width, just less faithfully.
+            logger.warning(f"[Retriever] Could not widen embedding window, using default: {e}")
 
     def _get_sparse_model(self) -> SparseTextEmbedding:
         """Loads lightweight BM25 sparse tokenizer layer."""
