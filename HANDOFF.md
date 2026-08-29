@@ -158,72 +158,44 @@ These are non-obvious constraints. Violating them breaks production.
 
 ---
 
-## TASK 1 (PRIMARY) — Make the evaluation measure the real pipeline
+## TASK 1 — COMPLETE
 
-**File:** `src/evaluate_rag.py`
+`src/evaluate_rag.py` was rewritten to drive the deployed pipeline: retrieval through
+`HybridRetriever` against the cloud cluster, prompts from `SYSTEM_PROMPT_TEMPLATE` and
+`_assemble_context` unmodified, generation with `allam-2-7b`, and judging by
+`openai/gpt-oss-120b` (120B judging a 7B generator).
 
-**The problem.** This script does not evaluate the deployed system. It currently:
+Three defects surfaced while getting it working, all fixed:
+* `llama-3.3-70b-versatile` does not exist on this account and 404s.
+* The judge resolver probed for *a response*, not a *usable* one. `gpt-oss-120b`
+  answers a trivial probe but returns empty content on real scoring calls, so the
+  resolver would have selected a judge that failed every question.
+* A 300-token judge budget truncated the reasoning models mid-deliberation
+  (`finish_reason="length"`, empty content). Raised to 1000.
 
-- connects to `url="http://localhost:6333"` — a local Qdrant, not the cloud cluster
-- embeds with `HuggingFaceEmbeddings`, not FastEmbed
-- calls `store.similarity_search()` — dense only, with **no sparse retrieval, no RRF
-  fusion, no policy booster, and no cosine rescoring**
-- generates answers with **Ollama `llama3.2:1b`**, not Groq `allam-2-7b`
-- judges those answers with the same 1B model
+First real measurement, commit `835f70d`:
 
-The committed scores in `data/evaluation/evaluation_scores.json` (faithfulness 0.52,
-answer_relevancy 0.42, context_precision 0.34) therefore describe a completely
-different system. They have never measured production. The CI gate
-(`src/ci_quality_gate.py`) reads these numbers and now warns that they are stale.
+| metric | value | note |
+| :--- | ---: | :--- |
+| faithfulness | 0.708 | |
+| answer_relevancy | 0.740 | |
+| context_precision | 0.368 | set metric: all retrieved chunks |
+| precision_at_1 | 0.310 | rank metric: the top chunk |
 
-**What to build.** Rewrite the script so it exercises the production path:
+These replace 0.52 / 0.42 / 0.34, which measured a local Ollama pipeline that was
+never deployed.
 
-```python
-from src.retriever import HybridRetriever   # same retriever the API uses
-from groq import AsyncGroq                  # same LLM as production
-```
+**Ranking correction.** `retrieve()` had been re-sorting fused results by cosine
+similarity. Measured with chunks and judgements held fixed and only order varied, RRF
+ordering wins at every depth (p@1 0.320 vs 0.260, p@5 0.370 vs 0.330) because RRF
+fuses dense and sparse while cosine sees only dense. RRF order is restored; the cosine
+score is retained for display only. Do not re-sort by score.
 
-Requirements:
-
-- Retrieve with `HybridRetriever.retrieve()` so sparse, RRF, the booster and cosine
-  rescoring are all exercised.
-- Resolve Qdrant from `QDRANT_CLOUD_URL` / `QDRANT_CLOUD_API_KEY` (see
-  `src.create_embeddings.resolve_target` for the pattern to copy).
-- Generate answers with `allam-2-7b` through Groq, reusing the real
-  `SYSTEM_PROMPT_TEMPLATE` and `_assemble_context` from `src/api.py` so the prompt
-  matches production exactly.
-- Use a **stronger judge than the generator.** A 1B model scoring its own output is
-  not a meaningful measurement. Use a larger Groq model for scoring, and state in the
-  output which model judged.
-- Keep the output schema identical so `ci_quality_gate.py` keeps working:
-  `{"faithfulness": float, "answer_relevancy": float, "context_precision": float,
-  "per_question": [...]}` written to `data/evaluation/evaluation_scores.json`.
-- Record the evaluated commit SHA and the judge model in the output.
-- Remove the `ollama`, `langchain_huggingface` and `langchain_qdrant` imports. They
-  are not in `requirements.txt` and only work on this machine by accident.
-
-**Run it:**
-
-```bash
-cd c:\Users\hameed\saudi-vision-2030-rag
-python -m src.evaluate_rag
-```
-
-**Then:**
-
-```bash
-python -m src.ci_quality_gate     # must pass; staleness warning should disappear
-```
-
-**Expect the numbers to change.** They may go up or down. Report the honest result —
-do not tune thresholds to make them pass. If they fall below the floors in
-`ci_quality_gate.py` (0.40 / 0.30 / 0.20), say so and explain why rather than
-adjusting the floors.
-
-**Verification to paste back:** the before/after scores, the judge model used, and
-the `ci_quality_gate` output.
-
----
+**What did not help.** An ablation over the booster legs and query expansion moved
+precision less than judge noise (0.367-0.409 across four configurations). Only 1-3
+chunks in 8 are judged useful per question, which is corpus coverage rather than a
+retrieval defect. The lever for further quality is more Vision 2030 policy content,
+not code.
 
 ## TASK 2 — RESOLVED, DO NOT ATTEMPT
 
