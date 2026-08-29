@@ -9,8 +9,6 @@ COPY src/ ./src/
 COPY index.html .
 COPY data/processed_data/ ./data/processed_data/
 
-ENV QDRANT_URL=http://qdrant:6333
-
 EXPOSE 8000
 
 CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000"]

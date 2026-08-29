@@ -46,11 +46,12 @@ class HybridRetriever:
     def __init__(self, qdrant_url: Optional[str] = None):
         # Dynamically read cloud variables first, fallback gracefully to localhost
         self.qdrant_url = qdrant_url or os.getenv("QDRANT_CLOUD_URL") or os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.qdrant_api_key = os.getenv("QDRANT_CLOUD_API_KEY")
+        self.qdrant_api_key = os.getenv("QDRANT_CLOUD_API_KEY") or os.getenv("QDRANT_API_KEY")
         
         self._client = None
         self._dense_model = None
         self._sparse_model = None
+        self._vision_sources = None
 
     def _get_client(self) -> QdrantClient:
         """Initializes a secured QdrantClient instance with token authentication mapping."""
@@ -99,6 +100,65 @@ class HybridRetriever:
             self._sparse_model = SparseTextEmbedding("Qdrant/bm25")
         return self._sparse_model
 
+    def _get_vision_sources(self) -> List[str]:
+        """
+        Resolves the exact `metadata.source` values of the core Vision 2030 policy docs.
+
+        `metadata.source` must carry a KEYWORD index because the document registry
+        facets on it and delete_document filters on it with MatchValue. Qdrant allows
+        only one index per field, and KEYWORD matching is whole-value only -- so no
+        substring predicate (MatchText, or MatchAny on a bare token) can match here.
+        We resolve the full values once and match them exactly instead.
+        """
+        if self._vision_sources is not None:
+            return self._vision_sources
+        try:
+            facet_result = self._get_client().facet(
+                collection_name=self.COLLECTION_NAME,
+                key="metadata.source",
+                limit=1000,
+            )
+            self._vision_sources = [
+                hit.value for hit in (facet_result.hits or [])
+                if isinstance(hit.value, str) and "vision2030" in hit.value.lower()
+            ]
+            logger.info(
+                f"[Retriever] Policy booster resolved {len(self._vision_sources)} Vision 2030 source(s)."
+            )
+        except Exception as e:
+            logger.warning(f"[Retriever] Could not resolve Vision 2030 sources for booster: {e}")
+            self._vision_sources = []
+        return self._vision_sources
+
+    @staticmethod
+    def _cosine_scores(query_vector, points) -> List[float]:
+        """
+        True cosine similarity between the query and each returned chunk.
+
+        The score Qdrant returns from a FusionQuery is an RRF score -- sum(1/(60+rank))
+        -- which depends only on rank position, so it is identical for every query and
+        carries no relevance signal. The dense vectors come back on the same round trip,
+        so we compute the real similarity locally instead.
+        """
+        import numpy as np
+        qv = np.asarray(query_vector, dtype=np.float32)
+        qn = float(np.linalg.norm(qv)) or 1.0
+        scores = []
+        for point in points:
+            vec = None
+            if isinstance(point.vector, dict):
+                vec = point.vector.get(HybridRetriever.DENSE_VECTOR_NAME)
+            elif point.vector is not None:
+                vec = point.vector
+            if vec is None:
+                # Vector withheld by the server: fall back to the fused score.
+                scores.append(float(point.score or 0.0))
+                continue
+            cv = np.asarray(vec, dtype=np.float32)
+            cn = float(np.linalg.norm(cv)) or 1.0
+            scores.append(max(0.0, min(1.0, float(np.dot(cv, qv)) / (cn * qn))))
+        return scores
+
     def health_check(self) -> bool:
         """Verifies operational status of the upstream vector network pipeline without blocking/crashing."""
         try:
@@ -136,7 +196,7 @@ class HybridRetriever:
                 key="metadata.source",
                 limit=1000
             )
-            unique_pdfs = len(facet_result.hits) if facet_result.hits else 48
+            unique_pdfs = len(facet_result.hits or [])
             
             return {
                 "points_count": info.points_count,
@@ -144,9 +204,11 @@ class HybridRetriever:
             }
         except Exception as e:
             logger.warning(f"Telemetry fetch failed: {e}")
+            # Report the outage rather than inventing plausible-looking counts.
             return {
-                "points_count": 6257,
-                "unique_sources": 48
+                "points_count": None,
+                "unique_sources": None,
+                "available": False,
             }
 
     def get_document_registry(self) -> list:
@@ -262,83 +324,70 @@ class HybridRetriever:
                 values=sparse_result.values.tolist(),
             )
 
-            # 3. Parallel dual-query prefetch step mapped to unified RRF compiler
-            try:
-                results = client.query_points(
+            # 3. Hybrid prefetch (dense + sparse) fused via Reciprocal Rank Fusion.
+            #    The third leg over-indexes on the core policy documents to counteract
+            #    term-frequency dominance from the long financial circulars.
+            booster_should = [
+                models.FieldCondition(
+                    key="metadata.section",
+                    match=models.MatchValue(value="General"),
+                ),
+            ]
+            vision_sources = self._get_vision_sources()
+            if vision_sources:
+                booster_should.append(
+                    models.FieldCondition(
+                        key="metadata.source",
+                        match=models.MatchAny(any=vision_sources),
+                    )
+                )
+
+            base_prefetch = [
+                # Primary dense query (semantic matches)
+                models.Prefetch(query=dense_vector, using=self.DENSE_VECTOR_NAME, limit=k),
+                # Primary sparse query (exact keyword matches)
+                models.Prefetch(query=sparse_vector, using=self.SPARSE_VECTOR_NAME, limit=k),
+            ]
+            boosted_prefetch = base_prefetch + [
+                models.Prefetch(
+                    query=dense_vector,
+                    using=self.DENSE_VECTOR_NAME,
+                    filter=models.Filter(should=booster_should),
+                    limit=max(1, k // 2),
+                ),
+            ]
+
+            def _run(prefetch):
+                # with_vectors returns the dense vectors on this same round trip so we
+                # can compute real cosine similarity without a second query.
+                return client.query_points(
                     collection_name=self.COLLECTION_NAME,
-                    prefetch=[
-                        # 1. Primary Dense Query (Semantic matches)
-                        models.Prefetch(
-                            query=dense_vector,
-                            using=self.DENSE_VECTOR_NAME,
-                            limit=k,
-                        ),
-                        # 2. Primary Sparse Query (Exact keyword matches)
-                        models.Prefetch(
-                            query=sparse_vector,
-                            using=self.SPARSE_VECTOR_NAME,
-                            limit=k,
-                        ),
-                        # 3. Policy Overview Booster: 
-                        # Over-indexes on broad query terms against general documents to counteract 
-                        # financial circular term-frequency dominance.
-                        models.Prefetch(
-                            query=dense_vector,
-                            using=self.DENSE_VECTOR_NAME,
-                            filter=models.Filter(
-                                should=[
-                                    models.FieldCondition(
-                                        key="metadata.section",
-                                        match=models.MatchValue(value="General"),
-                                    ),
-                                    models.FieldCondition(
-                                        key="metadata.source",
-                                        match=models.MatchText(text="vision2030"),
-                                    ),
-                                ]
-                            ),
-                            limit=max(1, k // 2),
-                        ),
-                    ],
+                    prefetch=prefetch,
                     query=models.FusionQuery(fusion=models.Fusion.RRF),
                     limit=k,
                     with_payload=True,
+                    with_vectors=[self.DENSE_VECTOR_NAME],
                 )
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 400:
-                    logger.warning("[Retriever] Qdrant 400 Bad Request on booster filter (Missing Index). Falling back to pure Dense/Sparse.")
-                    # Safe Fallback: Execute without the booster prefetch
-                    results = client.query_points(
-                        collection_name=self.COLLECTION_NAME,
-                        prefetch=[
-                            models.Prefetch(query=dense_vector, using=self.DENSE_VECTOR_NAME, limit=k),
-                            models.Prefetch(query=sparse_vector, using=self.SPARSE_VECTOR_NAME, limit=k),
-                        ],
-                        query=models.FusionQuery(fusion=models.Fusion.RRF),
-                        limit=k,
-                        with_payload=True,
-                    )
-                else:
-                    raise
+
+            try:
+                results = _run(boosted_prefetch)
             except Exception as e:
-                # To catch qdrant_client.http.exceptions.UnexpectedResponse specifically if raised instead of HTTPStatusError
-                if "400" in str(e) or "Index required" in str(e):
-                    logger.warning(f"[Retriever] Qdrant 400 Error (Likely missing index): {e}. Falling back to pure Dense/Sparse.")
-                    results = client.query_points(
-                        collection_name=self.COLLECTION_NAME,
-                        prefetch=[
-                            models.Prefetch(query=dense_vector, using=self.DENSE_VECTOR_NAME, limit=k),
-                            models.Prefetch(query=sparse_vector, using=self.SPARSE_VECTOR_NAME, limit=k),
-                        ],
-                        query=models.FusionQuery(fusion=models.Fusion.RRF),
-                        limit=k,
-                        with_payload=True,
+                # A missing payload index on a booster field is recoverable: the two
+                # primary legs still answer the query correctly on their own.
+                status = getattr(getattr(e, "response", None), "status_code", None)
+                if status == 400 or "400" in str(e) or "Index required" in str(e):
+                    logger.warning(
+                        f"[Retriever] Booster prefetch rejected ({e}). "
+                        "Falling back to pure Dense/Sparse fusion."
                     )
+                    results = _run(base_prefetch)
                 else:
                     raise
 
+            scores = self._cosine_scores(dense_vector, results.points)
+
             chunks = []
-            for point in results.points:
+            for point, score in zip(results.points, scores):
                 payload = point.payload or {}
                 metadata = payload.get("metadata", {})
                 chunks.append(RetrievedChunk(
@@ -346,9 +395,12 @@ class HybridRetriever:
                     source=metadata.get("source", "unknown"),
                     page=metadata.get("page", 0),
                     section=metadata.get("section", "General"),
-                    score=round(point.score, 4) if point.score else 0.0,
+                    score=round(score, 4),
                     metadata=metadata,
                 ))
+            # Fusion orders by RRF rank; re-order by true semantic similarity so the
+            # strongest chunks lead the context window handed to the LLM.
+            chunks.sort(key=lambda c: c.score, reverse=True)
             return chunks
 
         except (httpx.ConnectError, ConnectionError, TimeoutError, OSError) as e:

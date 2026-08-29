@@ -9,15 +9,35 @@ import os
 import sqlite3
 import asyncio
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 
-DB_PATH = "data/sessions.db"
+# Anchored to the project root rather than the process CWD: uvicorn is not always
+# started from the repository root, and a relative path would silently create a
+# second, empty database somewhere else.
+DB_PATH = str(Path(__file__).resolve().parent.parent / "data" / "sessions.db")
+
+_initialized = False
+
+
+def _connect() -> sqlite3.Connection:
+    """
+    Opens a connection with a write timeout.
+
+    Every request handler opens its own connection from a worker thread, so
+    concurrent turns contend for the same file. Without a timeout SQLite raises
+    'database is locked' immediately instead of waiting for the writer to finish.
+    """
+    return sqlite3.connect(DB_PATH, timeout=10.0)
 
 
 def init_db():
     """Initializes the SQLite database and creates the messages table."""
+    global _initialized
+    if _initialized:
+        return
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = _connect()
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
@@ -31,12 +51,13 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+    _initialized = True
 
 
 def save_message(session_id: str, role: str, content: str):
     """Saves a message to the SQLite database."""
     init_db()
-    conn = sqlite3.connect(DB_PATH)
+    conn = _connect()
     cursor = conn.cursor()
     timestamp = datetime.now(timezone.utc).isoformat()
     cursor.execute(
@@ -50,7 +71,7 @@ def save_message(session_id: str, role: str, content: str):
 def get_session_history(session_id: str, limit: int = 4) -> dict:
     """Retrieves the last N messages for a session, plus any existing summary."""
     init_db()
-    conn = sqlite3.connect(DB_PATH)
+    conn = _connect()
     cursor = conn.cursor()
 
     # Check for the latest summary if any exists
@@ -85,7 +106,7 @@ async def summarize_history(session_id: str):
         return
 
     init_db()
-    conn = sqlite3.connect(DB_PATH)
+    conn = _connect()
     cursor = conn.cursor()
 
     # Count total messages in this session
@@ -99,6 +120,8 @@ async def summarize_history(session_id: str):
     # Fetch all messages to build a comprehensive summary
     cursor.execute("SELECT role, content FROM messages WHERE session_id = ? ORDER BY id ASC", (session_id,))
     rows = cursor.fetchall()
+
+    conn.close()
 
     history_text = "\n".join([f"{role.upper()}: {content}" for role, content in rows])
 
@@ -119,6 +142,10 @@ async def summarize_history(session_id: str):
         )
         summary_text = response.choices[0].message.content.strip()
 
+        # Reopen only once the network call has returned.
+        conn = _connect()
+        cursor = conn.cursor()
+
         # Save summary to the most recent message row
         cursor.execute(
             "SELECT id FROM messages WHERE session_id = ? ORDER BY id DESC LIMIT 1",
@@ -131,17 +158,16 @@ async def summarize_history(session_id: str):
             (summary_text, latest_id)
         )
         conn.commit()
+        conn.close()
         print(f"[Memory] Summarized session {session_id} ({len(summary_text)} chars)")
     except Exception as e:
         print(f"[Memory] Summary skipped (non-critical): {e}")
-    finally:
-        conn.close()
 
 
 def clear_session(session_id: str):
     """Deletes all messages for a session."""
     init_db()
-    conn = sqlite3.connect(DB_PATH)
+    conn = _connect()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
     conn.commit()

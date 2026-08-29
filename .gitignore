@@ -17,3 +17,6 @@ qdrant_data/
 .venv/
 venv/
 app.py
+data/sessions.db
+data/feedback/
+logs/

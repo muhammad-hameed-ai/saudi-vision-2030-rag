@@ -17,9 +17,9 @@ import asyncio
 import json
 import uuid
 import time
-import math
 import logging
 import traceback
+import secrets
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -35,7 +35,6 @@ from cachetools import TTLCache
 
 # Local module imports
 from src.retriever import HybridRetriever, QdrantUnavailableError
-from src.reranker import Reranker
 from src.logging_middleware import StructuredLoggingMiddleware, log_rag_query
 from src.hyde_retriever import generate_hypothesis
 from src.memory import save_message, get_session_history, summarize_history
@@ -83,8 +82,6 @@ for candidate in [
 # Lazy-Loaded Global Singletons
 # ---------------------------------------------------------------------------
 _retriever_instance: Optional[HybridRetriever] = None
-_reranker_instance: Optional[Reranker] = None
-
 def get_retriever() -> HybridRetriever:
     """Lazy initializer for HybridRetriever to prevent blocking Uvicorn startup."""
     global _retriever_instance
@@ -92,14 +89,6 @@ def get_retriever() -> HybridRetriever:
         logger.info("[INIT] Lazy loading HybridRetriever models (FastEmbed + Qdrant)...")
         _retriever_instance = HybridRetriever()
     return _retriever_instance
-
-def get_reranker() -> Reranker:
-    """Lazy initializer for Reranker model."""
-    global _reranker_instance
-    if _reranker_instance is None:
-        logger.info("[INIT] Lazy loading Cross-Encoder Reranker model...")
-        _reranker_instance = Reranker()
-    return _reranker_instance
 
 def get_groq_client() -> AsyncGroq:
     """Validates API key and returns initialized AsyncGroq client."""
@@ -112,19 +101,28 @@ def get_groq_client() -> AsyncGroq:
         )
     return AsyncGroq(api_key=api_key, timeout=30.0)
 
+# Resolved once at import. Falling back to a fresh random token per request would
+# silently lock the endpoint with no way to diagnose it, so we log the state.
+ADMIN_PASSPHRASE = os.getenv("ADMIN_PASSPHRASE")
+if not ADMIN_PASSPHRASE:
+    ADMIN_PASSPHRASE = secrets.token_hex(16)
+    logger.warning(
+        "ADMIN_PASSPHRASE is not configured. Document deletion is disabled: "
+        "the endpoint now requires an unguessable token that is never issued. "
+        "Set ADMIN_PASSPHRASE in the environment to enable it."
+    )
+
 startup_time: Optional[str] = None
 request_count: int = 0
 feedback_log: List[dict] = []
 
-SYSTEM_STATS = {
-    "queries_served_this_session": 0,
-    "latency_history": [],
-}
-
 # Pipeline Constants
 RETRIEVAL_K = 6         # Reduced from 10 to slash latency (Phase 2 optimization)
 RERANK_TOP_K = 4        # Compressed context size passed to LLM
-HEALTH_CHECK_TTL = 5.0  
+# The health probe costs a Qdrant round trip; 5s re-checked on nearly every request.
+HEALTH_CHECK_TTL = 30.0
+HYDE_MAX_WORDS = 8      # above this a query embeds well enough on its own
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024   # the whole file is buffered in RAM (512MB box)
 MAX_LATENCY_HISTORY = 100
 MAX_FEEDBACK_LOG = 500
 
@@ -145,6 +143,16 @@ def get_pipeline_lock() -> asyncio.Lock:
 
 # Cloud LLM Settings
 GROQ_MODEL = "allam-2-7b"
+
+# allam-2-7b exposes a 4096-token window shared between prompt and completion.
+# At k=10 the retrieved context alone reached ~2000 tokens, which together with a
+# 2048-token response allowance left nothing for the system prompt or conversation
+# memory. Everything below is budgeted against this window.
+MODEL_CONTEXT_TOKENS = 4096
+MAX_RESPONSE_TOKENS = 1024      # ~750 words: ample here, and half the worst-case latency
+CONTEXT_SAFETY_TOKENS = 256     # headroom for tokenizer drift vs. the estimate below
+CHARS_PER_TOKEN = 4             # conservative for mixed English/Arabic policy prose
+MAX_MEMORY_CHARS = 2000
 
 SYSTEM_PROMPT_TEMPLATE = """You are a Data Extraction Engine and Subject Matter Expert for Saudi Vision 2030.
 
@@ -196,19 +204,52 @@ def optimize_search_query(user_query: str) -> str:
 
     return query
 
+def _assemble_context(chunks: List[Any], memory_str: str) -> str:
+    """
+    Packs the highest-scoring chunks into whatever the context window has left.
+
+    Chunks arrive sorted by true similarity, so filling from the front and stopping at
+    the budget drops the weakest evidence first. Without this, a large k silently
+    overflows the model window and the request either errors or is truncated server-side.
+    """
+    overhead = len(SYSTEM_PROMPT_TEMPLATE) + len(memory_str)
+    budget = max(
+        0,
+        (MODEL_CONTEXT_TOKENS - MAX_RESPONSE_TOKENS - CONTEXT_SAFETY_TOKENS) * CHARS_PER_TOKEN
+        - overhead,
+    )
+    parts, used = [], 0
+    for chunk in chunks:
+        text = getattr(chunk, "content", str(chunk))
+        if used + len(text) > budget:
+            remaining = budget - used
+            if remaining > 200:   # a smaller fragment is noise, not evidence
+                parts.append(text[:remaining])
+            break
+        parts.append(text)
+        used += len(text) + 2
+    return ("\n\n").join(parts)
+
+
 def _clean_source_path(raw_path: Optional[str]) -> str:
     """Null-safe source path formatter."""
     if not raw_path:
         return "Saudi Vision 2030 Policy Document"
     return str(raw_path).replace("data\\raw_pdfs\\", "").replace("data/raw_pdfs/", "")
 
-def _sigmoid(x: float) -> float:
-    """Safe sigmoid calculation for reranker normalization."""
+def _clamp_score(x: float) -> float:
+    """
+    Normalizes a retriever score for display.
+
+    The retriever now returns a true cosine similarity already bounded to [0, 1].
+    The previous sigmoid existed to squash cross-encoder logits; applying it to a
+    cosine compresses every value into a narrow band around 0.6 and destroys the
+    signal, so this is a straight clamp.
+    """
     try:
-        bounded = max(min(float(x), 50.0), -50.0)
-        return 1.0 / (1.0 + math.exp(-bounded))
-    except Exception:
-        return 0.5
+        return max(0.0, min(1.0, float(x)))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -267,8 +308,7 @@ app.add_middleware(
         "http://localhost:8000", 
         "http://127.0.0.1:8000", 
         "https://saudi-vision-2030-rag-3.onrender.com",
-        "https://muhammad-hameed-ai.github.io",
-        "*",
+        "https://muhammad-hameed-ai.github.io"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -300,6 +340,21 @@ async def _require_qdrant():
             detail="Upstream vector infrastructure is down or degraded. Please retry shortly.",
         )
 
+async def _maybe_hyde(query: str) -> str:
+    """
+    Expands the query via HyDE only when it is short enough to be ambiguous.
+
+    HyDE costs a full Groq round trip (roughly 0.5-1.5s) on every request. It earns
+    that on terse queries with little to embed, but a long, specific question already
+    carries more signal than a generated hypothesis, so we skip it and answer faster.
+    """
+    if os.environ.get("USE_HYDE", "false").lower() != "true":
+        return query
+    if len(query.split()) > HYDE_MAX_WORDS:
+        return query
+    return await generate_hypothesis(query)
+
+
 async def _build_memory_string(session_id: str) -> str:
     try:
         memory_context = await asyncio.to_thread(get_session_history, session_id, 4)
@@ -308,6 +363,10 @@ async def _build_memory_string(session_id: str) -> str:
             memory_str += f"Summary of past conversation: {memory_context['summary']}\n"
         for m in memory_context.get("messages", []):
             memory_str += f"{m['role'].upper()}: {m['content']}\n"
+        # Keep the most recent exchanges: an unbounded history would crowd out the
+        # retrieved evidence it is supposed to accompany.
+        if len(memory_str) > MAX_MEMORY_CHARS:
+            memory_str = "...\n" + memory_str[-MAX_MEMORY_CHARS:]
         return memory_str
     except Exception as e:
         logger.warning(f"Failed to build session memory for {session_id}: {e}")
@@ -351,10 +410,11 @@ class AskResponse(BaseModel):
     timestamp: str
 
 class FeedbackRequest(BaseModel):
-    question: str
-    answer: str
+    # Bounded so an unauthenticated caller cannot write arbitrarily large payloads.
+    question: str = Field(max_length=1000)
+    answer: str = Field(max_length=8000)
     rating: int
-    comment: Optional[str] = ""
+    comment: Optional[str] = Field(default="", max_length=2000)
 
 
 # ---------------------------------------------------------------------------
@@ -362,16 +422,31 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 async def generate_rag_stream(request: ChatRequest):
     """Async generator to stream RAG tokens and metadata via SSE."""
+    global request_count
     start_time = time.time()
     query = request.question
-    query_key = query.strip().lower()
+    request_count += 1
 
-    if query_key in RAG_CACHE:
+    # Memory is loaded before the cache check deliberately: once a session has
+    # history the answer is specific to that conversation, so a shared cached reply
+    # would be wrong. k selects different evidence, so it belongs in the key too.
+    memory_str = await _build_memory_string(request.session_id)
+    cacheable = not memory_str
+    query_key = (request.k, query.strip().lower())
+
+    if cacheable and query_key in RAG_CACHE:
         cached = RAG_CACHE[query_key]
         yield f"data: {json.dumps({'type': 'metadata', 'sources': cached['sources'], 'cached': True})}\n\n"
         yield f"data: {json.dumps({'token': cached['response']})}\n\n"
         elapsed = round(time.time() - start_time, 2)
-        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': request.k})}\n\n"
+        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': request.k, 'relevance_score': cached.get('relevance_score')})}\n\n"
+        # A cache hit is still a conversation turn. Skipping the write here leaves
+        # holes in the history and breaks follow-ups that refer back to it.
+        try:
+            await asyncio.to_thread(save_message, request.session_id, 'user', query)
+            await asyncio.to_thread(save_message, request.session_id, 'assistant', cached['response'])
+        except Exception as mem_err:
+            logger.warning(f"Session history save skipped: {mem_err}")
         yield "data: [DONE]\n\n"
         return
 
@@ -380,15 +455,16 @@ async def generate_rag_stream(request: ChatRequest):
         top_k = request.k
 
         retriever_obj = get_retriever()
-        reranker_obj = get_reranker()
 
         optimized_query = optimize_search_query(query)
-        use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
-        search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
-        
+        search_query = await _maybe_hyde(optimized_query)
+
+        # Fetch at least as many candidates as the caller asked to keep. Pinning this
+        # to RETRIEVAL_K silently capped the UI's depth slider at 6.
+        fetch_k = max(RETRIEVAL_K, top_k)
         lock = get_pipeline_lock()
         async with lock:
-            candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
+            candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=fetch_k)
             # Bypass memory-heavy ONNX cross-encoder to prevent Render 512MB OOM crash
             reranked = candidates[:top_k]
 
@@ -399,15 +475,14 @@ async def generate_rag_stream(request: ChatRequest):
                 "file": _clean_source_path(getattr(chunk, 'source', None)),
                 "page": getattr(chunk, 'page', 1),
                 "section": getattr(chunk, 'section', 'General'),
-                "score": round(_sigmoid(raw_score), 4),
+                "score": round(_clamp_score(raw_score), 4),
             })
 
         # Render's proxy buffers small chunks. Padding forces immediate flush to UI.
         yield ":" + " " * 2048 + "\n\n"
         yield f"data: {json.dumps({'type': 'metadata', 'sources': source_citations, 'cached': False})}\n\n"
 
-        memory_str = await _build_memory_string(request.session_id)
-        context = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
+        context = _assemble_context(reranked, memory_str)
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context)
 
         client = get_groq_client()
@@ -419,7 +494,7 @@ async def generate_rag_stream(request: ChatRequest):
             ],
             stream=True,
             temperature=0.2,
-            max_tokens=2048,
+            max_tokens=MAX_RESPONSE_TOKENS,
         )
 
         full_response = ""
@@ -428,11 +503,6 @@ async def generate_rag_stream(request: ChatRequest):
             if token:
                 full_response += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
-
-        RAG_CACHE[query_key] = {
-            "sources": source_citations,
-            "response": full_response
-        }
 
         # Background history save
         try:
@@ -448,18 +518,37 @@ async def generate_rag_stream(request: ChatRequest):
         if source_citations:
             avg_relevance = sum(c["score"] for c in source_citations) / len(source_citations)
             
+        if cacheable:
+            RAG_CACHE[query_key] = {
+                "sources": source_citations,
+                "response": full_response,
+                "relevance_score": round(avg_relevance * 100, 2),
+            }
+
         app_telemetry_logs.append({
             "latency": elapsed,
             "relevance_score": round(avg_relevance * 100, 2),
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
-        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': request.k})}\n\n"
+        yield f"data: {json.dumps({'type': 'telemetry', 'generation_time': elapsed, 'retrieval_k': request.k, 'relevance_score': round(avg_relevance * 100, 2)})}\n\n"
         yield "data: [DONE]\n\n"
 
     except Exception as e:
         logger.error(f"Stream generation error:\n{traceback.format_exc()}")
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+def _require_admin(token: Optional[str]) -> None:
+    """
+    Shared gate for every route that mutates the vector store or writes to disk.
+
+    Ingest previously had no gate at all while delete did, even though both write to
+    the same collection -- an unauthenticated writer can poison retrieval, exhaust the
+    free-tier quota, or drive the container out of memory.
+    """
+    if not token or not secrets.compare_digest(token, ADMIN_PASSPHRASE):
+        raise HTTPException(status_code=403, detail="Forbidden. Invalid administrative passcode.")
+
 
 @app.post("/api/chat")
 @limiter.limit("10/minute")
@@ -487,26 +576,22 @@ async def ask(request: Request, payload: ChatRequest, background_tasks: Backgrou
     # Register forced garbage collection after the response is sent
     background_tasks.add_task(gc.collect)
     
-    if len(payload.question) > 500:
-        raise HTTPException(status_code=422, detail="Query exceeds maximum allowed limit of 500 characters.")
-
     t0 = time.time()
 
     try:
         await _require_qdrant()
         retriever_obj = get_retriever()
-        reranker_obj = get_reranker()
 
         optimized_query = optimize_search_query(payload.question)
-        use_hyde = os.environ.get("USE_HYDE", "false").lower() == "true"
-        search_query = await generate_hypothesis(optimized_query) if use_hyde else optimized_query
-        
-        candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=RETRIEVAL_K)
+        search_query = await _maybe_hyde(optimized_query)
+
+        fetch_k = max(RETRIEVAL_K, payload.k)
+        candidates = await asyncio.to_thread(retriever_obj.retrieve, search_query, k=fetch_k)
         # Bypass memory-heavy ONNX cross-encoder to prevent Render 512MB OOM crash
         reranked = candidates[:payload.k]
 
         memory_str = await _build_memory_string(payload.session_id)
-        context_text = "\n\n".join([getattr(c, 'content', str(c)) for c in reranked])
+        context_text = _assemble_context(reranked, memory_str)
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(memory=memory_str, context=context_text)
 
         client = get_groq_client()
@@ -516,7 +601,7 @@ async def ask(request: Request, payload: ChatRequest, background_tasks: Backgrou
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": payload.question}
             ],
-            max_tokens=2048,
+            max_tokens=MAX_RESPONSE_TOKENS,
             temperature=0.2,
             top_p=1.0,
         )
@@ -540,7 +625,7 @@ async def ask(request: Request, payload: ChatRequest, background_tasks: Backgrou
                 page=getattr(c, 'page', 1),
                 section=getattr(c, 'section', 'General'),
                 preview=getattr(c, 'content', '')[:150].strip(),
-                score=round(_sigmoid(raw_score), 4)
+                score=round(_clamp_score(raw_score), 4)
             ))
 
         await asyncio.to_thread(
@@ -595,7 +680,7 @@ def health():
         "status": "ok",
         "model": f"{GROQ_MODEL} (Groq Cloud)",
         "vector_store": "saudi_vision_2030",
-        "requests_served": request_count + SYSTEM_STATS["queries_served_this_session"],
+        "requests_served": request_count,
         "uptime_since": startup_time,
     }
 
@@ -608,16 +693,14 @@ def get_pipeline_info():
         coll_info = retriever_obj.get_telemetry_stats()
     except Exception as e:
         logger.warning(f"Could not retrieve Qdrant collection info: {e}")
-        coll_info = {"points_count": "Unknown (Database Disconnected)", "unique_sources": 48}
-
-    reranker_name = get_reranker().model_name if _reranker_instance else "Cross-Encoder (Lazy Loaded)"
+        coll_info = {"points_count": None, "unique_sources": None, "available": False}
 
     return {
         "corpus_summary": {
-            "documents": coll_info.get("unique_sources", 48),
-            "pages": 2184,
-            "chunks": coll_info.get("points_count", 0) if isinstance(coll_info, dict) else coll_info.get("points_count", "Unknown"),
+            "documents": coll_info.get("unique_sources"),
+            "chunks": coll_info.get("points_count"),
             "dimensions": 384,
+            "available": coll_info.get("available", True),
         },
         "configuration": {
             "document_loader": "PyMuPDFLoader",
@@ -626,7 +709,7 @@ def get_pipeline_info():
             "sparse_model": "Qdrant/bm25",
             "vector_database": "Qdrant (Hybrid: Dense + Sparse)",
             "distance_metric": "Cosine + RRF Fusion",
-            "reranker_model": reranker_name,
+            "reranker_model": "Disabled (bypassed to stay within the 512MB memory limit)",
             "retrieval_k": RETRIEVAL_K,
             "reranked_k": RERANK_TOP_K,
             "llm_backbone": f"{GROQ_MODEL} (Groq API)",
@@ -634,7 +717,8 @@ def get_pipeline_info():
     }
 
 @app.get("/api/documents")
-def get_documents():
+@limiter.limit("30/minute")
+def get_documents(request: Request):
     """Returns the list of documents and their chunk counts."""
     try:
         retriever_obj = get_retriever()
@@ -647,15 +731,14 @@ def get_documents():
 @app.delete("/api/documents")
 def delete_document_endpoint(filename: str, x_admin_access_token: Optional[str] = Header(None)):
     """Deletes all chunks associated with a specific document."""
-    admin_pass = os.getenv("ADMIN_PASSPHRASE", "3331604")
-    if not x_admin_access_token or x_admin_access_token != admin_pass:
-        return JSONResponse(status_code=403, content={"error": "Forbidden. Invalid administrative passcode."})
+    _require_admin(x_admin_access_token)
 
     if not filename:
         return JSONResponse(status_code=400, content={"error": "Filename parameter is required."})
     try:
         retriever_obj = get_retriever()
         success = retriever_obj.delete_document(filename)
+        retriever_obj._vision_sources = None
         if success:
             return {"status": "success", "message": f"Document '{filename}' purged successfully."}
         else:
@@ -667,21 +750,39 @@ def delete_document_endpoint(filename: str, x_admin_access_token: Optional[str] 
 @app.get("/api/documents/auth")
 def verify_document_auth(x_admin_access_token: Optional[str] = Header(None)):
     """Pre-flight check to verify admin passcode without deleting anything."""
-    admin_pass = os.getenv("ADMIN_PASSPHRASE", "3331604")
-    if not x_admin_access_token or x_admin_access_token != admin_pass:
-        return JSONResponse(status_code=403, content={"error": "Forbidden. Invalid administrative passcode."})
+    _require_admin(x_admin_access_token)
     return {"status": "success"}
 
 import io
 import fitz
 
 @app.post("/api/ingest/stream")
-async def ingest_pdf_stream(file: UploadFile = File(...)):
-    if not file.filename.endswith(".pdf"):
+@limiter.limit("5/minute")
+async def ingest_pdf_stream(
+    request: Request,
+    file: UploadFile = File(...),
+    x_admin_access_token: Optional[str] = Header(None),
+):
+    # Writes to the same collection that DELETE guards, so it takes the same gate.
+    _require_admin(x_admin_access_token)
+
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF documents are supported.")
 
-    pdf_bytes = await file.read()
-    filename = file.filename
+    # Read with a ceiling: the whole file is buffered in RAM, so an unbounded upload
+    # is an out-of-memory kill on a 512MB instance.
+    pdf_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(pdf_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)}MB limit for in-memory indexing. "
+                   "Index large documents locally instead.",
+        )
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    # Strip any directory component a client may have supplied.
+    filename = os.path.basename(file.filename)
 
     async def event_generator():
         try:
@@ -705,11 +806,18 @@ async def ingest_pdf_stream(file: UploadFile = File(...)):
                             "metadata": {
                                 "source": filename,
                                 "page": page_num + 1,
+                                "section": "General",
                                 "chunk_id": f"{filename}_p{page_num+1}_c{idx}"
                             }
                         })
             doc.close()
             pdf_stream.close()
+
+            if not chunks:
+                # A scanned/image-only PDF yields no text. Reporting success would add
+                # the file to the registry with nothing retrievable behind it.
+                yield f"data: {json.dumps({'stage': 'error', 'message': 'No extractable text found. This PDF is likely scanned images and needs OCR before indexing.'})}\n\n"
+                return
 
             # Step 2: Vectorization
             yield f"data: {json.dumps({'stage': 'embedding', 'progress': 50, 'message': f'Generated {len(chunks)} chunks. Vectorizing via FastEmbed...'})}\n\n"
@@ -725,6 +833,10 @@ async def ingest_pdf_stream(file: UploadFile = File(...)):
                 yield f"data: {json.dumps({'stage': 'indexing', 'progress': progress, 'message': f'Indexed {i + len(batch)}/{len(chunks)} chunks in Qdrant...'})}\n\n"
                 await asyncio.sleep(0.01)
 
+            # The booster caches the resolved Vision 2030 source list; a new upload
+            # can change it, so drop it and let the next query re-resolve.
+            retriever_obj._vision_sources = None
+
             # Step 3: Atomic Registry Update
             yield f"data: {json.dumps({'stage': 'complete', 'progress': 100, 'message': f'Successfully added {filename} to Qdrant Cloud!'})}\n\n"
 
@@ -736,48 +848,39 @@ async def ingest_pdf_stream(file: UploadFile = File(...)):
 @app.get("/api/analytics")
 def get_analytics_dashboard():
     """Performance metrics endpoint."""
-    logs = list(app_telemetry_logs)
-    if not logs:
-        # Safe baseline if empty
-        logs = [{
-            "latency": 1.5,
-            "relevance_score": 85.0,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }]
-    return logs
+    # Returns [] until real queries have been served. Inventing a baseline here would
+    # render as genuine telemetry in the dashboard.
+    return list(app_telemetry_logs)
 
 @app.post("/feedback")
-async def feedback(request: FeedbackRequest):
+@limiter.limit("20/minute")
+async def feedback(request: Request, payload: FeedbackRequest):
     """Saves user evaluation feedback."""
-    if request.rating not in [1, -1]:
+    if payload.rating not in [1, -1]:
         raise HTTPException(status_code=422, detail="Rating must be 1 or -1.")
 
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "question": request.question,
-        "answer": request.answer,
-        "rating": request.rating,
-        "comment": request.comment,
+        "question": payload.question,
+        "answer": payload.answer,
+        "rating": payload.rating,
+        "comment": payload.comment,
     }
     
     feedback_log.append(entry)
     if len(feedback_log) > MAX_FEEDBACK_LOG:
         feedback_log.pop(0)
 
-    os.makedirs("data/feedback", exist_ok=True)
-    path = "data/feedback/feedback_log.json"
+    # Anchored to the project root rather than the process CWD.
+    feedback_dir = PROJECT_ROOT / "data" / "feedback"
+    os.makedirs(feedback_dir, exist_ok=True)
+    path = str(feedback_dir / "feedback_log.jsonl")
     
     def write_feedback():
-        existing = []
-        if os.path.exists(path):
-            try:
-                with open(path) as f:
-                    existing = json.load(f)
-            except Exception:
-                existing = []
-        existing.append(entry)
-        with open(path, "w") as f:
-            json.dump(existing, f, indent=2)
+        # Append-only JSONL: the previous version re-read and re-serialised the entire
+        # file on every submission, which is O(n) per write and unbounded on disk.
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + chr(10))
             
     await asyncio.to_thread(write_feedback)
     return {"status": "recorded"}

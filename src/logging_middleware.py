@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 from datetime import datetime, timezone
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -35,13 +36,16 @@ class JSONFormatter(logging.Formatter):
 
 def setup_loggers():
     """Initialize the HTTP request logger and RAG audit logger."""
-    os.makedirs("logs", exist_ok=True)
+    # Anchored to the project root: uvicorn is not always started from the repo
+    # root, and a relative path would scatter log files wherever the process ran.
+    log_dir = Path(__file__).resolve().parent.parent / "logs"
+    os.makedirs(log_dir, exist_ok=True)
 
     # HTTP request logger
     http_logger = logging.getLogger("rag.http")
     http_logger.setLevel(logging.INFO)
     if not http_logger.handlers:
-        handler = logging.FileHandler("logs/http_requests.jsonl", encoding="utf-8")
+        handler = logging.FileHandler(log_dir / "http_requests.jsonl", encoding="utf-8")
         handler.setFormatter(JSONFormatter())
         http_logger.addHandler(handler)
 
@@ -49,7 +53,7 @@ def setup_loggers():
     audit_logger = logging.getLogger("rag.audit")
     audit_logger.setLevel(logging.INFO)
     if not audit_logger.handlers:
-        handler = logging.FileHandler("logs/rag_audit.jsonl", encoding="utf-8")
+        handler = logging.FileHandler(log_dir / "rag_audit.jsonl", encoding="utf-8")
         handler.setFormatter(JSONFormatter())
         audit_logger.addHandler(handler)
 
