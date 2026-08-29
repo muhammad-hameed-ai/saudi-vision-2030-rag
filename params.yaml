@@ -11,6 +11,10 @@ embed:
   model_name: sentence-transformers/all-MiniLM-L6-v2
   sparse_model: Qdrant/bm25
   collection_name: saudi_vision_2030
+  # Fallback only. QDRANT_CLOUD_URL / QDRANT_CLOUD_API_KEY in the environment take
+  # precedence (see src/create_embeddings.resolve_target), so the same config drives
+  # both indexing and serving. Leaving this as the sole source is what prevented the
+  # pipeline from ever rebuilding the cloud collection.
   qdrant_url: http://localhost:6333
   batch_size: 100
 
