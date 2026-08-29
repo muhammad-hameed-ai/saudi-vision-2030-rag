@@ -325,5 +325,13 @@
     "answer_relevancy": 0.71,
     "context_precision": 0.4,
     "hyde_enabled": true
+  },
+  {
+    "timestamp": "2026-08-29T09:20:13Z",
+    "commit": "835f70d",
+    "faithfulness": 0.71,
+    "answer_relevancy": 0.75,
+    "context_precision": 0.36,
+    "hyde_enabled": true
   }
 ]
