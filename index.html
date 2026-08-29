@@ -1671,6 +1671,7 @@
 
                         if (rawData === "[DONE]") {
                             hasCompletedAStream = true;
+                            flushMessageRender(botMessageContainer);
                             sessionManager.addMessage('user', queryText);
                             sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
                             return;
@@ -1698,6 +1699,7 @@
                 currentLoadId = null;
 
                 if (error.name === 'AbortError') {
+                    flushMessageRender(botMessageContainer);
                     if (botMessageContainer) {
                         sessionManager.addMessage('user', queryText);
                         sessionManager.addMessage('assistant', botMessageContainer.dataset.rawMessage || "", { citations: currentSources, metrics: currentTelemetry });
@@ -1788,16 +1790,46 @@
             lucide.createIcons();
         }
 
+        /* Rendering was re-parsing the whole markdown, re-sanitising it and rebuilding
+           the entire DOM subtree on every single token. For a 1000-token answer that is
+           1000 full parses of a growing string plus 1000 forced reflows - quadratic work
+           that shows up as stutter and dropped formatting on mobile.
+
+           Tokens now accumulate and the body is rendered at most once per animation
+           frame. Nobody perceives faster than the display refreshes, so this is
+           visually identical while doing roughly an order of magnitude less work. */
+        let pendingRenderFrame = null;
+
+        function renderMessageBody(container) {
+            if (!container) return;
+            const contentBox = container.querySelector(".message-content-box");
+            if (!contentBox) return;
+            contentBox.innerHTML = DOMPurify.sanitize(safeMarked(container.dataset.rawMessage || ""));
+            const thread = document.getElementById("chat-thread");
+            if (thread) thread.scrollTop = thread.scrollHeight;
+        }
+
+        /* Called when a stream ends, is aborted, or errors, so the final tokens are
+           never left sitting in an unrendered frame. */
+        function flushMessageRender(container) {
+            if (pendingRenderFrame !== null) {
+                cancelAnimationFrame(pendingRenderFrame);
+                pendingRenderFrame = null;
+            }
+            renderMessageBody(container);
+        }
+
         function appendTokenToMessageUI(container, token) {
             const contentBox = container.querySelector(".message-content-box");
             const indicator = contentBox.querySelector(".generation-indicator");
             if (indicator) indicator.remove();
             if (!container.dataset.rawMessage) container.dataset.rawMessage = "";
             container.dataset.rawMessage += token;
-            const rawHtml = safeMarked(container.dataset.rawMessage);
-            contentBox.innerHTML = DOMPurify.sanitize(rawHtml);
-            const thread = document.getElementById("chat-thread");
-            thread.scrollTop = thread.scrollHeight;
+            if (pendingRenderFrame !== null) return;   /* a render is already queued */
+            pendingRenderFrame = requestAnimationFrame(() => {
+                pendingRenderFrame = null;
+                renderMessageBody(container);
+            });
         }
 
         function appendUserMessage(msg, existingId = null, saveState = true) {

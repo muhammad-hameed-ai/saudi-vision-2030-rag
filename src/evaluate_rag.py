@@ -42,11 +42,20 @@ OUTPUT_PATH = PROJECT_ROOT / "data" / "evaluation" / "evaluation_scores.json"
 # The judge must be stronger than the generator or the score is meaningless. Candidates
 # are tried in order and the first reachable one is used, so a single deprecation does
 # not break evaluation the way it once broke the service.
+# Verified present on this account 2026-08-29 via models.list(). All are substantially
+# larger than the 7B generator. llama-3.3-70b-versatile is NOT available here and 404s.
 JUDGE_CANDIDATES = [
-    "llama-3.3-70b-versatile",
     "openai/gpt-oss-120b",
-    "llama-3.1-70b-versatile",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
 ]
+
+# Reasoning models (the gpt-oss family) emit their chain of thought before the answer
+# and return empty content if the budget runs out first. 12 tokens starved them
+# entirely; 300 still truncated the longest deliberations (observed finish_reason
+# "length" with empty content on a dense context). 1000 leaves ample headroom - the
+# reply itself is three characters, so the cost of over-provisioning is negligible.
+JUDGE_MAX_TOKENS = 1000
 
 EVAL_QUESTIONS = [
     "What are the main economic goals of Saudi Vision 2030?",
@@ -95,10 +104,15 @@ class Judge:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=12,
+                max_tokens=JUDGE_MAX_TOKENS,
                 temperature=0.0,
             )
-            value = _parse_score(response.choices[0].message.content)
+            choice = response.choices[0]
+            value = _parse_score(choice.message.content)
+            if value is None and choice.finish_reason == "length":
+                # Distinguish "the judge ran out of room" from "the judge said nothing
+                # useful"; the first is a configuration problem, the second is data.
+                print(f"      judge truncated (finish_reason=length) - raise JUDGE_MAX_TOKENS")
         except Exception as e:
             print(f"      judge call failed: {e}")
             value = None
@@ -141,12 +155,25 @@ class Judge:
 
 
 async def resolve_judge(client, preferred: str = None) -> str:
-    """Returns the first candidate judge model that answers, so a deprecation is survivable."""
+    """
+    Returns the first candidate that produces a *usable* score.
+
+    Probing only for a response is not enough: a reachable model can still return
+    empty content for every real scoring call, which would silently zero the whole
+    evaluation. The probe therefore runs a genuine scoring prompt with a known answer
+    and requires a parseable number back.
+    """
+    probe = ("Rate how well the ANSWER addresses the QUESTION, from 0.0 to 1.0.\n"
+             "Reply with only a number.\n\nQUESTION:\nWhat is the capital of Saudi Arabia?"
+             "\n\nANSWER:\nRiyadh is the capital.\n\nSCORE:")
     for model in ([preferred] if preferred else []) + JUDGE_CANDIDATES:
         try:
-            await client.chat.completions.create(
-                model=model, messages=[{"role": "user", "content": "0.5"}], max_tokens=3)
-            return model
+            response = await client.chat.completions.create(
+                model=model, messages=[{"role": "user", "content": probe}],
+                max_tokens=JUDGE_MAX_TOKENS, temperature=0.0)
+            if _parse_score(response.choices[0].message.content) is not None:
+                return model
+            print(f"  judge candidate returned no parseable score: {model}")
         except Exception as e:
             print(f"  judge candidate unavailable: {model} ({str(e)[:70]})")
     return None

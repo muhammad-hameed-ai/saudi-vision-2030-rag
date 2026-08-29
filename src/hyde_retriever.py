@@ -7,7 +7,8 @@ as the search query for denser semantic matching against the vector store.
 
 import os
 import asyncio
-from groq import AsyncGroq
+
+from src.groq_client import get_client
 
 
 async def generate_hypothesis(query: str) -> str:
@@ -15,9 +16,9 @@ async def generate_hypothesis(query: str) -> str:
     Generate a concise hypothetical document snippet via Groq Cloud LLM.
     Falls back to the original query if Groq is unavailable.
     """
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        print("[HyDE] GROQ_API_KEY not set — skipping hypothesis generation.")
+    client = get_client()
+    if client is None:
+        print("[HyDE] GROQ_API_KEY not set - skipping hypothesis generation.")
         return query
 
     prompt = (
@@ -28,12 +29,12 @@ async def generate_hypothesis(query: str) -> str:
     )
 
     try:
-        client = AsyncGroq(api_key=api_key, timeout=15.0)
         response = await client.chat.completions.create(
             model="allam-2-7b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=100,
             temperature=0.3,
+            timeout=15.0,
         )
         hypothesis = response.choices[0].message.content.strip()
         print(f"[HyDE] Generated hypothesis ({len(hypothesis)} chars)")

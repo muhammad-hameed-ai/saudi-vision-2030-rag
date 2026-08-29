@@ -38,6 +38,7 @@ from src.retriever import HybridRetriever, QdrantUnavailableError
 from src.logging_middleware import StructuredLoggingMiddleware, log_rag_query
 from src.hyde_retriever import generate_hypothesis
 from src.memory import save_message, get_session_history, summarize_history
+from src.groq_client import get_client as get_shared_groq_client, close_client as close_groq_client
 
 # ---------------------------------------------------------------------------
 # Logging & Environment Setup
@@ -91,15 +92,15 @@ def get_retriever() -> HybridRetriever:
     return _retriever_instance
 
 def get_groq_client() -> AsyncGroq:
-    """Validates API key and returns initialized AsyncGroq client."""
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    """Returns the process-wide Groq client, so connections are reused between requests."""
+    client = get_shared_groq_client()
+    if client is None:
         logger.error("GROQ_API_KEY environment variable is not configured.")
         raise HTTPException(
-            status_code=500, 
-            detail="GROQ_API_KEY environment variable is missing on server environment."
+            status_code=500,
+            detail="GROQ_API_KEY environment variable is missing on server environment.",
         )
-    return AsyncGroq(api_key=api_key, timeout=30.0)
+    return client
 
 # Resolved once at import. Falling back to a fresh random token per request would
 # silently lock the endpoint with no way to diagnose it, so we log the state.
@@ -259,9 +260,8 @@ async def warmup_llm():
     """Asynchronously pings Groq API without holding up port binding."""
     await asyncio.sleep(1)
     try:
-        api_key = os.environ.get("GROQ_API_KEY")
-        if api_key:
-            client = AsyncGroq(api_key=api_key)
+        client = get_shared_groq_client()
+        if client is not None:
             await client.chat.completions.create(
                 model=GROQ_MODEL,
                 messages=[{"role": "user", "content": "ping"}],
@@ -279,6 +279,7 @@ async def lifespan(app: FastAPI):
     logger.info("[INIT] FastAPI engine active. Port listening ready.")
     asyncio.create_task(warmup_llm())
     yield
+    await close_groq_client()
     logger.info("[SHUTDOWN] Terminating server context loops.")
 
 
@@ -494,6 +495,7 @@ async def generate_rag_stream(request: ChatRequest):
             ],
             stream=True,
             temperature=0.2,
+            timeout=30.0,
             max_tokens=MAX_RESPONSE_TOKENS,
         )
 
@@ -604,6 +606,7 @@ async def ask(request: Request, payload: ChatRequest, background_tasks: Backgrou
             max_tokens=MAX_RESPONSE_TOKENS,
             temperature=0.2,
             top_p=1.0,
+            timeout=30.0,
         )
         ai_answer = response.choices[0].message.content.strip()
 

@@ -101,8 +101,8 @@ async def summarize_history(session_id: str):
     Uses Groq Cloud API instead of local Ollama.
     Silently skips if Groq is unavailable (non-critical feature).
     """
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    from src.groq_client import get_client
+    if get_client() is None:
         return
 
     init_db()
@@ -132,13 +132,12 @@ async def summarize_history(session_id: str):
     )
 
     try:
-        from groq import AsyncGroq
-        client = AsyncGroq(api_key=api_key, timeout=15.0)
-        response = await client.chat.completions.create(
+        response = await get_client().chat.completions.create(
             model="allam-2-7b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
             temperature=0.3,
+            timeout=15.0,
         )
         summary_text = response.choices[0].message.content.strip()
 
