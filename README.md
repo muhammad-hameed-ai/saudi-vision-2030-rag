@@ -26,7 +26,16 @@ Loading FastEmbed's dense and sparse models alongside an ONNX cross-encoder rera
 
 Qdrant's `FusionQuery` returns a Reciprocal Rank Fusion score — `sum(1/(60+rank))` — which depends **only on rank position**. Position one scored 0.6225 whether the passage was perfect or irrelevant, so every displayed confidence figure was a rank artefact.
 
-Dense vectors are now requested on the same round trip (`with_vectors`) and true cosine similarity is computed locally, at no additional query cost. Chunks are then re-sorted by real similarity before entering the context window.
+Dense vectors are now requested on the same round trip (`with_vectors`) and true cosine similarity is computed locally, at no additional query cost.
+
+Ordering is a separate question from scoring, and the two use different signals deliberately. Results stay in **RRF fusion order**; an earlier revision re-sorted them by cosine, which measured worse at every depth because RRF fuses the dense *and* sparse rankings while cosine sees only the dense one:
+
+| ordering | p@1 | p@3 | p@5 |
+| :--- | ---: | ---: | ---: |
+| RRF fusion (current) | **0.320** | **0.367** | **0.370** |
+| cosine | 0.260 | 0.293 | 0.330 |
+
+Cosine remains the displayed confidence figure, because it is a real similarity measure — the RRF score is a rank artefact and would be meaningless there.
 
 | Query | Before | After |
 | :--- | ---: | ---: |
@@ -148,7 +157,7 @@ graph TB
 1. **Query normalisation** — regex typo correction and domain keyword expansion.
 2. **Conditional HyDE** — queries of 8 words or fewer are expanded into a hypothetical answer before embedding. Longer queries carry enough signal on their own and skip the round trip, saving ~2 s.
 3. **Hybrid search** — a 384-dim dense vector (`all-MiniLM-L6-v2`) and a BM25 sparse vector drive three parallel prefetches, fused by Reciprocal Rank Fusion.
-4. **Cosine rescoring** — dense vectors returned alongside results are scored locally and the candidates re-sorted.
+4. **Cosine scoring** — dense vectors returned alongside results are scored locally for display. Ordering stays in RRF fusion order, which measures better than cosine order at every depth.
 5. **Context budgeting** — the highest-scoring chunks are packed into the tokens remaining after the system prompt, conversation memory, and the reserved response allowance.
 6. **Streaming synthesis** — tokens relay to the browser over SSE as Groq produces them.
 
@@ -166,6 +175,32 @@ Production, with requests spaced to avoid upstream rate limiting.
 | Cache hit | — | — | **222 ms** |
 
 The same retrieval takes **235 ms locally** — 184 ms of Qdrant round trip plus 37 ms of dense embedding. The entire difference is ONNX inference on 0.1 CPU.
+
+### Retrieval quality
+
+Measured against the deployed pipeline at commit `835f70d` — generation by
+`allam-2-7b`, judged by `openai/gpt-oss-120b` so the judge is substantially larger
+than the model under test:
+
+| metric | value | what it measures |
+| :--- | ---: | :--- |
+| faithfulness | 0.708 | are the answer's claims supported by the retrieved context |
+| answer relevancy | 0.740 | does the answer address the question |
+| context precision | 0.368 | what share of retrieved chunks are useful (set metric) |
+| precision@1 | 0.310 | how good is the top-ranked chunk (rank metric) |
+
+Both context metrics are reported because averaging every retrieved chunk is
+order-independent and therefore blind to ranking; the rank metric is what catches a
+ranking regression.
+
+Context precision is the honest weak spot. Only one to three chunks in eight are
+judged useful for a given question, which is a corpus coverage limit rather than a
+retrieval defect: two bond and sukuk prospectuses make up 34% of the corpus, so
+questions on lightly-covered topics have little to retrieve. An ablation over the
+booster legs and query expansion moved precision less than judge noise, so the
+remaining lever is corpus composition, not tuning.
+
+Reproduce with `python -m src.evaluate_rag` (add `--dry-run` for retrieval only).
 
 **On dashboard metrics:** the analytics view previously displayed hardcoded faithfulness and relevance figures alongside a `Math.random()` server-load chart. These have been removed. Both remaining charts read real per-query telemetry from `/api/analytics`, which returns an empty array until queries have actually been served. Evaluation scores live in `data/evaluation/` and are produced by `src/evaluate_rag.py`, not asserted in the UI.
 
