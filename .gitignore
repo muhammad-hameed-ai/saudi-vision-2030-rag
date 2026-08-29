@@ -20,3 +20,10 @@ app.py
 data/sessions.db
 data/feedback/
 logs/
+
+# Generated artifacts and local database state - never source of truth
+qdrant_storage/
+mlartifacts/
+mlflow.db
+evidently_report.html
+reports/*.html
