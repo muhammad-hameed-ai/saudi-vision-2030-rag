@@ -1,86 +1,127 @@
 {
-  "faithfulness": 0.656,
-  "answer_relevancy": 0.71,
-  "context_precision": 0.396,
-  "evaluated_commit": "d23f9ac",
+  "faithfulness": 0.71,
+  "answer_relevancy": 0.75,
+  "context_precision": 0.361,
+  "context_precision_at_1": 0.32,
+  "evaluated_commit": "87e3603",
   "generator_model": "allam-2-7b",
   "judge_model": "openai/gpt-oss-120b",
   "retrieval_k": 5,
-  "judge_failures": 0,
-  "evaluated_at": "2026-08-29T08:51:17Z",
+  "judge_failures": 1,
+  "evaluated_at": "2026-08-29T09:18:51Z",
   "per_question": [
     {
       "question": "What are the main economic goals of Saudi Vision 2030?",
-      "answer": "Based on the provided context and information, the main economic goals of Saudi Vision 2030 can be summarized as follows:\n\n1. Grow the assets of the Public Investment Fund (PIF)\n2. Unlock new sectors\n3. Localize cutting-edge technology and knowledge\n4. Build strategic economic partnerships\n\nThese goals align with the Fund's strategy and investment requirements, as they contribute to the national economic and social development outlined in Saudi Vision 2030. The Fund collaborates with other strategic programs within the Kingdom to invest in commercially viable opportunities across sectors in Saudi Arabia.",
-      "faithfulness": 0.85,
-      "answer_relevancy": 0.3,
-      "context_precision": 0.38,
+      "answer": "Based on the provided context and information, the main economic goals of Saudi Vision 2030 can be summarized as follows:\n\n1. Grow the assets of the Public Investment Fund (PIF)\n2. Unlock new sectors\n3. Localize cutting-edge technology and knowledge\n4. Build strategic economic partnerships\n\nThese goals align with the Kingdom's broader objectives outlined in Vision 2030, which aims for positive, sustainable change in the Kingdom. The Public Investment Fund plays a strategic role in achieving these objectives as part of Vision 2030, collaborating with other Vision 2030 programs to invest in commercially viable opportunities across sectors in the Kingdom.",
+      "faithfulness": 0.95,
+      "answer_relevancy": 0.45,
+      "context_precision": 0.39,
+      "context_precision_at_1": 0.6,
+      "chunk_scores": [
+        0.6,
+        0.55,
+        0.2,
+        0.2,
+        0.4
+      ],
       "sources": [
         "international-sukuk-program-offering-circular-2025-.pdf",
         "international-bond-program-offering-circular-2025-pdf.pdf",
+        "executive-summary-vision2030.pdf",
         "ntp_en_annual_report_2025.pdf",
-        "international-sukuk-program-offering-circular-2025-.pdf",
-        "international-bond-program-offering-circular-2025-pdf.pdf"
+        "international-sukuk-program-offering-circular-2025-.pdf"
       ],
       "top_cosine": 0.7632
     },
     {
       "question": "What role does the private sector play in Vision 2030?",
-      "answer": "In the context of the Kingdom of Saudi Arabia's Vision 2030, the private sector plays a crucial role in achieving the strategic goals set out in the plan. Here's a summary of the private sector's role in Vision 2030:\n\n1. Contribution to GDP diversification: The private sector is instrumental in contributing to the diversification of the Kingdom's economy by investing in various sectors with high potential for growth and commercial value.\n2. Economic growth stimulation: The private sector's involvement helps stimulate economic growth in the Kingdom, aligning with the objectives of Vision 2030.\n3. Enhancing competitiveness: Vision 2030 aims to enhance the Kingdom's competitiveness by promoting private sector development and growth.\n4. Job creation: The private sector plays a part in creating jobs, contributing to the overall economic development of the country.\n5. Investment: The private sector is involved in attracting investments, both domestic and foreign, to support the Kingdom's economic diversification efforts.\n6. Partnership with the public sector: Vision 2030 recognizes the importance of collaboration between the public and private sectors to achieve the plan's objectives.\n7. Social and structural changes: The private sector is involved in driving social and structural changes, aligning with the plan's goals.\n\nBy engaging with these roles, the private sector contributes to the Kingdom's transition towards a more diversified, sustainable, and resilient economy, as envisioned by Vision 2030.",
-      "faithfulness": 0.88,
-      "answer_relevancy": 0.95,
-      "context_precision": 0.43,
+      "answer": "In the context of the Kingdom of Saudi Arabia's Vision 2030, the private sector plays a crucial role in achieving the strategy's goals. Here is a summary of the private sector's role:\n\n1. Stimulating private sector growth: The Saudi Arabian Public Investment Fund (PIF) contributes to the diversification of the Kingdom's economy by promoting growth in selected industries and sectors with high potential for growth and commercial value.\n2. Supporting economic diversification: The private sector plays a significant part in diversifying the Kingdom's economy by investing in various sectors and industries, reducing dependence on oil as a primary revenue source.\n3. Economic development: The private sector helps drive economic development through investments, job creation, and innovation, which are essential components of Vision 2030.\n4. National Delivery Council (NDC): The NDC is responsible for overseeing the implementation of Vision 2030, ensuring that the private sector plays a vital role in achieving the strategy's objectives.\n\nBy engaging with the private sector, Vision 2030 aims to create a sustainable, diversified economy, improve the quality of life for citizens, and achieve social and economic development.",
+      "faithfulness": 0.65,
+      "answer_relevancy": 0.85,
+      "context_precision": 0.3,
+      "context_precision_at_1": 0.4,
+      "chunk_scores": [
+        0.4,
+        0.2,
+        0.3,
+        0.3,
+        0.3
+      ],
       "sources": [
         "ceda-vision-2030-5-year-update-v22.pdf",
         "national-investment-strategy.pdf",
+        "international-bond-program-offering-circular-2025-pdf.pdf",
         "executive-summary-vision2030.pdf",
-        "Privatization Program - Saudipedia.pdf",
-        "international-bond-program-offering-circular-2025-pdf.pdf"
+        "international-sukuk-program-offering-circular-2025-.pdf"
       ],
       "top_cosine": 0.7056
     },
     {
       "question": "What is the Public Investment Fund and what is its role?",
-      "answer": "The Public Investment Fund (PIF) is a sovereign wealth fund owned by the Kingdom of Saudi Arabia. It plays a crucial role in achieving the goals of Saudi Vision 2030 and the national economic reform by contributing to economic diversification and the development of promising sectors, both domestically and globally.\n\nThe PIF program aims to:\n\n1. Diversify the Saudi economy away from oil dependence\n2. Support the development of domestic industries and sectors\n3. Invest globally in sectors that align with Saudi Arabia's strategic interests\n4. Strengthen the Kingdom's economic position on the global stage\n5. Boost the competitiveness of Saudi Arabia's economy\n6. Foster innovation and technology development\n7. Encourage private sector participation in the economy\n8. Promote the development of new sectors and industries\n9. Strengthen the Kingdom's economic position on the global stage\n10. Support the development of Saudi Arabia's infrastructure\n11. Enhance the competitiveness of the Kingdom's economy\n12. Encourage the development of promising sectors and industries\n13. Foster innovation and technology development\n14. Increase the participation of the private sector in the economy\n15. Promote the development of new sectors and industries\n16. Strengthen the Kingdom's economic position on the global stage\n17. Support the development of Saudi Arabia's infrastructure\n18. Enhance the competitiveness of the Kingdom's economy\n19. Support the development of Saudi Arabia's infrastructure\n20. Encourage the development of promising sectors and industries\n21. Foster innovation and technology development\n22. Increase the participation of the private sector in the economy\n23. Promote the development of new sectors and industries\n24. Strengthen the Kingdom's economic position on the global stage\n25. Support the development of Saudi Arabia's infrastructure\n26. Enhance the competitiveness of the Kingdom's economy\n27. Encourage the development of promising sectors and industries\n28. Foster innovation and technology development\n29. Increase the participation of the private sector in the economy\n30. Promote the development of new sectors and industries\n31. Strengthen the Kingdom's economic position on the global stage\n32. Support the development of Saudi Arabia's infrastructure\n33. Enhance the competitiveness of the Kingdom's economy\n34. Encourage the development of promising sectors and industries\n35. Foster innovation and technology development\n36. Increase the participation of the private sector in the economy\n37. Promote the development of new sectors and industries\n38. Strengthen the Kingdom's economic position on the global stage\n39. Support the development of Saudi Arabia's infrastructure\n40. Enhance the competitiveness of the Kingdom's economy\n41. Encourage the development of promising sectors and industries\n42. Foster innovation and technology development\n43. Increase the participation of the private sector in the economy\n44. Promote the development of new sectors and industries\n45. Strengthen the Kingdom's economic position on the global stage\n46. Support the development of Saudi Arabia's infrastructure\n47. Enhance the competitiveness of the Kingdom's economy\n48. Encourage the development of promising sectors and industries\n49. Foster innovation and technology development\n50. Increase the participation of the private sector in the economy\n51. Promote the development of new sectors and industries\n52. Strengthen the Kingdom's economic position on the global stage\n53. Support the development of Saudi Arabia's infrastructure\n54. Enhance the competitiveness of the Kingdom's economy\n55. Encourage the development of promising sectors and industries\n56. Foster innovation and technology development\n57. Increase the participation of the private sector in the economy\n58. Promote the development of new sectors and industries\n59. Strengthen the Kingdom's economic position on the global stage\n60. Support the development of Saudi Arabia's infrastructure\n61. Enhance the competitiveness of the Kingdom's economy\n62. Encourage the development of promising sectors and industries\n63. Foster innovation and technology development\n64. Increase the participation of the private sector in the economy\n65. Promote the development of new sectors and industries\n66. Strengthen the Kingdom's economic position on the global stage\n67. Support the development of Saudi Arabia's infrastructure\n68. Enhance the competitiveness of the Kingdom's economy\n69. Encourage the development of promising sectors and industries",
-      "faithfulness": 0.2,
-      "answer_relevancy": 0.55,
+      "answer": "The Public Investment Fund (PIF) is a sovereign wealth fund owned by the Kingdom of Saudi Arabia. Its primary role is to contribute to achieving the objectives of Saudi Vision 2030, which is focused on economic diversification and the development of various sectors within the country and globally.\n\nThe Fund's funding principles are as follows:\n\n1. Capital injections from the Government\n2. Asset transactions from the Government\n3. Loans and debt instruments\n4. Investment returns from the Fund's assets\n\nThe Fund's relationship with the Government is crucial for its operations, as it relies on additional capital from the Government to mitigate risks and ensure its sustainability. In the absence of suitable financing sources or if financing sources are only available on burdensome terms, the Fund may face increased borrowing costs and reduced capital and investment expenditures. Furthermore, any affected portfolio company of the Fund may face similar challenges.",
+      "faithfulness": 0.95,
+      "answer_relevancy": 0.95,
       "context_precision": 0.42000000000000004,
+      "context_precision_at_1": 0.3,
+      "chunk_scores": [
+        0.3,
+        0.4,
+        0.0,
+        0.95,
+        0.45
+      ],
       "sources": [
-        "international-sukuk-program-offering-circular-2025-.pdf",
         "international-sukuk-program-offering-circular-2025-.pdf",
         "international-bond-program-offering-circular-2025-pdf.pdf",
         "international-sukuk-program-offering-circular-2025-.pdf",
-        "Public Investment Fund Program - Saudipedia.pdf"
+        "Public Investment Fund Program - Saudipedia.pdf",
+        "international-sukuk-program-offering-circular-2025-.pdf"
       ],
-      "top_cosine": 0.8291
+      "top_cosine": 0.7312
     },
     {
       "question": "What are the Vision Realization Programs?",
-      "answer": "Vision Realization Programs (VRPs) are strategic initiatives designed to guide the implementation of the Saudi Arabia Vision 2030. These programs are developed to achieve the assigned objectives for the PIF (Public Investment Fund). The first VRPs covered the period from 2018 to 2020. The following targets and initiatives were outlined for that period:\n\n1. Growing PIF's assets: PIF's assets have grown from SAR 570bn by the end of 2015 to over SAR 1.8 trillion by the end of 2021.\n2. Unlocking sustainable new sectors: PIF has contributed to the Kingdom's diversification by unlocking sectors such as entertainment, renewable energy production, and recycling.\n3. Localizing cutting-edge technology and knowledge: PIF has localized technology and knowledge in the sectors of finance, telecommunications, healthcare, and others.\n4. Building strategic economic partnerships: PIF has established strategic economic partnerships with both public and private partners.\n\nThese VRPs align with the Kingdom's Vision 2030 objectives, focusing on growing the non-oil revenue streams, developing local capabilities, and fostering strategic partnerships.",
+      "answer": "Vision Realization Programs (VRPs) are strategic initiatives designed to guide the implementation of the Saudi Arabia Vision 2030. These programs aim to achieve the objectives assigned to the Public Investment Fund (PIF), which include:\n\n1. Growing PIF's assets\n2. Unlocking new sectors in the Kingdom\n3. Localizing cutting-edge technology and knowledge\n4. Building strategic economic partnerships\n\nThe first VRPs were launched in 2017 and covered the period from 2018 to 2020. Since then, PIF has successfully met and exceeded the targets set for these programs, including:\n\n1. PIF's assets have grown from SAR 570bn by the end of 2015 to over SAR 1.8 trillion by the end of 2021\n2. Unlocked sustainable new sectors in the Kingdom, such as entertainment\n3. Localized cutting-edge technology and knowledge in various sectors\n4. Established strategic economic partnerships with both public and private entities\n\nThese VRPs have played a crucial role in achieving the objectives of Saudi Arabia's Vision 2030, which aims to diversify the economy, develop the non-oil sector, and strengthen the Kingdom's position globally.",
       "faithfulness": 1.0,
-      "answer_relevancy": 0.85,
-      "context_precision": 0.62,
+      "answer_relevancy": 0.95,
+      "context_precision": 0.625,
+      "context_precision_at_1": 0.2,
+      "chunk_scores": [
+        0.2,
+        0.85,
+        0.6,
+        0.85,
+        null
+      ],
       "sources": [
         "executive-summary-vision2030.pdf",
         "executive-summary-vision2030.pdf",
         "executive-summary-vision2030.pdf",
-        "PIF Green Finance Framework February 2022.pdf",
-        "PIF_Green Finance Framework August 2024.pdf"
+        "PIF_Green Finance Framework August 2024.pdf",
+        "PIF Green Finance Framework February 2022.pdf"
       ],
       "top_cosine": 0.7634
     },
     {
       "question": "How does Vision 2030 aim to develop the entertainment sector?",
-      "answer": "Saudi Arabia's Vision 2030 aims to develop the entertainment sector through the Public Investment Fund (PIF) and its initiatives. PIF, as a key component of Vision 2030, plays a crucial role in achieving the Kingdom's objectives. Here are the ways Vision 2030 aims to develop the entertainment sector:\n\n1. Growing the assets of PIF: By increasing the size and diversification of PIF's portfolio, the Kingdom aims to boost the economy and create new opportunities in various sectors, including the entertainment industry.\n2. Unlocking sustainable sectors: PIF has been instrumental in unlocking new sectors, such as entertainment, contributing to the diversification of the Saudi economy and reducing the dependence on oil.\n3. Supporting local content: PIF supports local content development, fostering creativity and innovation within the entertainment sector.\n4. Investing in global entertainment companies: PIF invests in international entertainment companies, expanding the Kingdom's influence in the global entertainment market and fostering collaboration between local and international players.\n5. Strengthening the private sector: Vision 2030 aims to strengthen the private sector, including the entertainment industry, to drive economic growth and diversification.\n6. Developing infrastructure: Vision 2030 plans to develop the necessary infrastructure for the entertainment sector, ensuring a solid foundation for growth and sustainability.\n7. Enhancing the quality of life: Improving the quality of life for citizens and residents through the development of world-class entertainment options.\n8. Supporting local talent: PIF focuses on nurturing local talent in the entertainment sector, fostering a thriving and competitive industry.\n9. Encouraging foreign investment: Vision 2030 promotes foreign investment in the entertainment sector, fostering economic growth and diversification.\n10. Strengthening the role of the private sector: Vision 2030 aims to strengthen the role of the private sector, including the entertainment industry, to drive economic growth and diversification.\n\nBy implementing these strategies, Vision 2030 aims to develop the entertainment sector, contributing to the Kingdom's economic diversification and improving the quality of life for citizens and residents.",
-      "faithfulness": 0.35,
-      "answer_relevancy": 0.9,
-      "context_precision": 0.13,
+      "answer": "Within the context of Saudi Arabia's Vision 2030, the development of the entertainment sector aims to contribute to the overall objectives of diversifying the Kingdom's economy and improving the quality of life for citizens and residents. To achieve this, Vision 2030 focuses on the following aspects:\n\n1. Chapter 1: Financial Sector Development Program (FSDP)\n   A) Financial Sector Development Program Description: Vision 2030 recognizes the importance of developing the entertainment sector as part of the FSDP, which aligns with the Kingdom's economic diversification efforts.\n2. Chapter 2: 2025 Commitments\n   B) 2025 Commitments: Vision 2030 has made commitments to develop the entertainment sector, including the establishment of the Saudi Center for Culture and Arts (SCCA) and the Saudi Center for Sports, Tourism, and Events (SCTE).\n3. Chapter 3: VRP Strategy\n   A) Strategic Pillars: Vision 2030 outlines the development of the entertainment sector within the context of the three strategic pillars: Hijra (Saudization, Economic Transformation, and Social Development).\n4. Chapter 5: Initiatives Portfolio\n   C) Completed Initiatives: Vision 2030 has implemented several initiatives to develop the entertainment sector, including the establishment of the Saudi Center for Culture and Arts (SCCA) and the Saudi Center for Sports, Tourism, and Events (SCTE).\n\nBy focusing on these initiatives and aligning the development of the entertainment sector with the Kingdom's economic diversification efforts, Vision 2030 aims to improve the quality of life for citizens and residents, attract investments, and create job opportunities.",
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.55,
+      "context_precision": 0.07,
+      "context_precision_at_1": 0.1,
+      "chunk_scores": [
+        0.1,
+        0.0,
+        0.2,
+        0.05,
+        0.0
+      ],
       "sources": [
         "ceda-vision-2030-5-year-update-v22.pdf",
         "executive-summary-vision2030.pdf",
-        "vision2030_annual_report_2025_en.pdf",
         "national-investment-strategy.pdf",
-        "PIF Green Finance Framework February 2022.pdf"
+        "vision2030_annual_report_2025_en.pdf",
+        "fsdp_eng.pdf"
       ],
       "top_cosine": 0.662
     }

@@ -141,17 +141,23 @@ class Judge:
             f"QUESTION:\n{question}\n\nANSWER:\n{answer}\n\nSCORE:"
         )
 
-    async def context_precision(self, question: str, chunks) -> float:
-        scores = []
+    async def context_scores(self, question: str, chunks):
+        """
+        Judges every retrieved chunk, in rank order, returning the raw list.
+
+        The caller derives both a set metric (how much of what we retrieved was
+        useful) and a rank metric (did the useful part come first). Returning only
+        the mean hid ranking entirely, which is why a real ranking improvement once
+        looked like noise here.
+        """
+        out = []
         for chunk in chunks:
-            value = await self._score(
+            out.append(await self._score(
                 "Rate how useful this CONTEXT CHUNK is for answering the QUESTION, "
                 "from 0.0 to 1.0.\nReply with only a number.\n\n"
                 f"QUESTION:\n{question}\n\nCONTEXT CHUNK:\n{chunk[:1500]}\n\nSCORE:"
-            )
-            if value is not None:
-                scores.append(value)
-        return sum(scores) / len(scores) if scores else None
+            ))
+        return out
 
 
 async def resolve_judge(client, preferred: str = None) -> str:
@@ -213,7 +219,7 @@ async def run(args) -> int:
                   "independent.")
     print(f"Questions  : {len(EVAL_QUESTIONS)}   k={args.k}\n")
 
-    faith_scores, relev_scores, prec_scores, log = [], [], [], []
+    faith_scores, relev_scores, prec_scores, prec_at_1_scores, log = [], [], [], [], []
 
     for i, question in enumerate(EVAL_QUESTIONS, 1):
         print(f"[{i}/{len(EVAL_QUESTIONS)}] {question}")
@@ -250,17 +256,22 @@ async def run(args) -> int:
 
         faith = await judge.faithfulness(answer, context)
         relev = await judge.relevancy(question, answer)
-        prec = await judge.context_precision(question, texts)
+        chunk_scores = await judge.context_scores(question, texts)
+        graded = [v for v in chunk_scores if v is not None]
+        prec = sum(graded) / len(graded) if graded else None
+        # Rank-aware: an order-independent mean cannot detect a ranking
+        # regression. The score of the chunk we ranked first can.
+        prec_at_1 = chunk_scores[0] if chunk_scores else None
 
         for value, bucket in ((faith, faith_scores), (relev, relev_scores),
-                              (prec, prec_scores)):
+                              (prec, prec_scores), (prec_at_1, prec_at_1_scores)):
             if value is not None:
                 bucket.append(value)
 
         def fmt(v):
             return f"{v:.2f}" if v is not None else "n/a"
         print(f"      faithfulness {fmt(faith)} | relevancy {fmt(relev)} "
-              f"| precision {fmt(prec)}\n")
+              f"| precision {fmt(prec)} | p@1 {fmt(prec_at_1)}\n")
 
         log.append({
             "question": question,
@@ -268,6 +279,8 @@ async def run(args) -> int:
             "faithfulness": faith,
             "answer_relevancy": relev,
             "context_precision": prec,
+            "context_precision_at_1": prec_at_1,
+            "chunk_scores": chunk_scores,
             "sources": sources,
             "top_cosine": top_score,
         })
@@ -284,6 +297,9 @@ async def run(args) -> int:
         "faithfulness": mean(faith_scores),
         "answer_relevancy": mean(relev_scores),
         "context_precision": mean(prec_scores),
+        # context_precision averages every retrieved chunk and is therefore
+        # blind to ordering. This companion moves when ranking changes.
+        "context_precision_at_1": mean(prec_at_1_scores),
         # Provenance: without these, a score cannot be attributed to a pipeline.
         "evaluated_commit": _git_sha(),
         "generator_model": GROQ_MODEL,
@@ -297,7 +313,8 @@ async def run(args) -> int:
     print("=" * 62)
     print(f"  faithfulness       {results['faithfulness']:.4f}")
     print(f"  answer_relevancy   {results['answer_relevancy']:.4f}")
-    print(f"  context_precision  {results['context_precision']:.4f}")
+    print(f"  context_precision  {results['context_precision']:.4f}  (set: every retrieved chunk)")
+    print(f"  precision_at_1     {results['context_precision_at_1']:.4f}  (rank: the top chunk)")
     print(f"  generator {GROQ_MODEL}   judge {judge.model}   commit {results['evaluated_commit']}")
     if judge.failures:
         print(f"  WARNING: {judge.failures} judge call(s) failed and were excluded "
