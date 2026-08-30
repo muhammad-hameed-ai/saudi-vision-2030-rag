@@ -334,6 +334,10 @@ Embeddings must come from FastEmbed with the window pinned to 256 tokens, which 
 
 ## Operations
 
+```bash
+python -m scripts.doctor --live   # verify configuration and both upstreams
+```
+
 See [OPERATIONS.md](OPERATIONS.md) for free-tier limits, which stores reset on spin-down, known upstream failure modes, and the incident runbook.
 
 Two constraints worth stating plainly:

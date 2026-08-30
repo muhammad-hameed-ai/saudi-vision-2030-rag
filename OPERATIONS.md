@@ -113,6 +113,18 @@ If the embedding model is ever changed, check its trained window and set
 
 ## Health checks
 
+Run the diagnostic first -- it covers every failure mode listed above in one pass:
+
+```bash
+python -m scripts.doctor --live
+```
+
+It verifies the configured Groq model still exists, the Qdrant cluster is awake, both
+payload indexes are still `keyword`, the embedding window matches the corpus, and the
+deployed write endpoints are gated.
+
+Individual endpoints:
+
 ```bash
 curl https://saudi-vision-2030-rag-3.onrender.com/health          # liveness + uptime
 curl https://saudi-vision-2030-rag-3.onrender.com/api/pipeline-info  # corpus + config

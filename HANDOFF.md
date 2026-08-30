@@ -158,69 +158,43 @@ These are non-obvious constraints. Violating them breaks production.
 
 ---
 
-## TASK 1 — COMPLETE
+## STATUS: no outstanding tasks
 
-`src/evaluate_rag.py` was rewritten to drive the deployed pipeline: retrieval through
-`HybridRetriever` against the cloud cluster, prompts from `SYSTEM_PROMPT_TEMPLATE` and
-`_assemble_context` unmodified, generation with `allam-2-7b`, and judging by
-`openai/gpt-oss-120b` (120B judging a 7B generator).
+Both tasks this brief originally carried are closed.
 
-Three defects surfaced while getting it working, all fixed:
-* `llama-3.3-70b-versatile` does not exist on this account and 404s.
-* The judge resolver probed for *a response*, not a *usable* one. `gpt-oss-120b`
-  answers a trivial probe but returns empty content on real scoring calls, so the
-  resolver would have selected a judge that failed every question.
-* A 300-token judge budget truncated the reasoning models mid-deliberation
-  (`finish_reason="length"`, empty content). Raised to 1000.
+**Task 1 — evaluation.** `src/evaluate_rag.py` now drives the deployed pipeline:
+retrieval through `HybridRetriever` against the cloud cluster, prompts from
+`SYSTEM_PROMPT_TEMPLATE` and `_assemble_context` unmodified, generation with
+`allam-2-7b`, judging by `openai/gpt-oss-120b`. Measured at commit `835f70d`:
+faithfulness 0.708, answer_relevancy 0.740, context_precision 0.368,
+precision_at_1 0.310. These replace 0.52 / 0.42 / 0.34, which measured a local Ollama
+pipeline that was never deployed.
 
-First real measurement, commit `835f70d`:
-
-| metric | value | note |
-| :--- | ---: | :--- |
-| faithfulness | 0.708 | |
-| answer_relevancy | 0.740 | |
-| context_precision | 0.368 | set metric: all retrieved chunks |
-| precision_at_1 | 0.310 | rank metric: the top chunk |
-
-These replace 0.52 / 0.42 / 0.34, which measured a local Ollama pipeline that was
-never deployed.
+**Task 2 — chunk re-index.** Withdrawn; the diagnosis behind it was wrong. Detail
+below.
 
 **Ranking correction.** `retrieve()` had been re-sorting fused results by cosine
-similarity. Measured with chunks and judgements held fixed and only order varied, RRF
-ordering wins at every depth (p@1 0.320 vs 0.260, p@5 0.370 vs 0.330) because RRF
-fuses dense and sparse while cosine sees only dense. RRF order is restored; the cosine
-score is retained for display only. Do not re-sort by score.
+similarity. With chunks and judgements held fixed and only order varied, RRF ordering
+wins at every depth (p@1 0.320 vs 0.260, p@5 0.370 vs 0.330), because RRF fuses dense
+and sparse while cosine sees only dense. RRF order is restored; cosine is retained for
+display only. **Do not re-sort by score.**
 
 **What did not help.** An ablation over the booster legs and query expansion moved
 precision less than judge noise (0.367-0.409 across four configurations). Only 1-3
-chunks in 8 are judged useful per question, which is corpus coverage rather than a
-retrieval defect. The lever for further quality is more Vision 2030 policy content,
-not code.
+chunks in 8 are judged useful per question — corpus coverage, not a retrieval defect.
+The remaining lever on quality is corpus composition: two bond and sukuk prospectuses
+are 34% of the corpus while `saudi_vision2030.pdf` is 2.7%.
 
-## TASK 2 — RESOLVED, DO NOT ATTEMPT
+## Before changing anything, run the diagnostic
 
-An earlier version of this brief asked for `chunk_size` to be reduced from 1000 to 700
-followed by a full re-index, on the grounds that chunks were being truncated at the
-model's 256-token ceiling. **That diagnosis was wrong and the task has been withdrawn.**
+```bash
+python -m scripts.doctor --live
+```
 
-What was actually true, measured against the live cluster:
-
-* The corpus was indexed at a 256-token window and the mean chunk is 197 tokens, so
-  nothing was being truncated. The corpus is intact.
-* FastEmbed defaults to a **128-token** window. That is what produced the apparent
-  "truncation" — the measuring tool was narrower than the corpus, not the reverse.
-* At 128, FastEmbed did not reproduce the stored vectors: mean cosine 0.949, worst
-  0.876. At 256 it reproduces them exactly: 1.0000 mean, 1.0000 minimum.
-* Short query vectors are bit-identical at either width, so no re-index was needed.
-
-The fix is `HybridRetriever.EMBED_MAX_TOKENS = 256`, applied in `src/retriever.py` and
-reused by `src/create_embeddings.py`. This also corrected two real defects: documents
-uploaded through the web console were getting vectors inconsistent with the corpus, and
-questions longer than ~630 characters were being cut before embedding even though the
-API accepts 1000.
-
-**Do not reduce `chunk_size` and do not re-index.** Doing so would rebuild the corpus
-for no benefit and take the service down while it ran.
+It checks every failure mode this project has actually hit: the configured Groq model
+still existing, the Qdrant cluster being awake, both payload indexes still being
+`keyword`, the embedding window matching the corpus, and the deployed write endpoints
+still being gated.
 
 ## WHAT IS NOT LEFT TO DO
 
