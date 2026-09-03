@@ -720,10 +720,10 @@
                                 class="relative flex items-end bg-slate-900/80 backdrop-blur-md border border-slate-700/60 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/20 rounded-xl transition-all shadow-2xl">
                                 <textarea id="user-input" rows="1"
                                     placeholder="Query structural timelines, metrics, policies... (Shift+Enter for new line)"
-                                    class="w-full bg-transparent px-4 py-3.5 pr-16 relative z-10 text-sm text-slate-100 placeholder-slate-500 outline-none resize-none overflow-hidden max-h-32"
+                                    class="w-full bg-transparent px-4 py-3.5 pr-16 text-sm text-slate-100 placeholder-slate-500 outline-none resize-none overflow-hidden max-h-32"
                                     oninput="autoResize(this)" onkeydown="handleEnter(event)"></textarea>
                                 <button type="submit" id="send-btn"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-[10000] flex items-center justify-center touch-manipulation pointer-events-auto" style="min-width:44px;min-height:44px">
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-50 flex items-center justify-center touch-manipulation pointer-events-auto" style="min-width:44px;min-height:44px">
                                     <i data-lucide="send" class="w-4 h-4 pointer-events-none"></i>
                                 </button>
                             </form>
@@ -1726,7 +1726,7 @@
                     }
                     if (sendBtn) {
                         sendBtn.disabled = false;
-                        sendBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-[10000] flex items-center justify-center touch-manipulation pointer-events-auto";
+                        sendBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-50 flex items-center justify-center touch-manipulation pointer-events-auto";
                         sendBtn.style.minWidth = '44px'; sendBtn.style.minHeight = '44px';
                         sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4 pointer-events-none"></i>`;
                     }
