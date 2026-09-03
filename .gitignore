@@ -2,6 +2,7 @@ mlruns/
 __pycache__/
 *.pyc
 .env
+.env.*
 dvc-storage/
 data/raw_pdfs/
 data/processed_data/raw_documents.pkl

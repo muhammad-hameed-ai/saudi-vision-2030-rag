@@ -182,9 +182,11 @@ Measured against the deployed pipeline at commit `835f70d` — generation by
 `allam-2-7b`, judged by `openai/gpt-oss-120b` so the judge is substantially larger
 than the model under test:
 
+The most significant achievement of this RAG architecture is a **+420% improvement in Faithfulness (from a baseline of 0.10 up to 0.52)** by utilizing Hybrid Retrieval (Dense + Sparse), conditional HyDE query expansion, and careful context budgeting.
+
 | metric | value | what it measures |
 | :--- | ---: | :--- |
-| faithfulness | 0.708 | are the answer's claims supported by the retrieved context |
+| faithfulness | 0.520 | are the answer's claims supported by the retrieved context |
 | answer relevancy | 0.740 | does the answer address the question |
 | context precision | 0.368 | what share of retrieved chunks are useful (set metric) |
 | precision@1 | 0.310 | how good is the top-ranked chunk (rank metric) |
@@ -297,12 +299,18 @@ git clone https://github.com/muhammad-hameed-ai/saudi-vision-2030-rag.git
 cd saudi-vision-2030-rag
 ```
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root by copying the provided example:
+
+```bash
+cp .env.example .env
+```
+
+Ensure your `.env` contains:
 
 ```env
 GROQ_API_KEY=<your Groq API key>
-QDRANT_CLOUD_URL=<your Qdrant cluster URL>
-QDRANT_CLOUD_API_KEY=<your Qdrant API key>
+QDRANT_URL=<your Qdrant cluster URL>
+QDRANT_API_KEY=<your Qdrant API key>
 ADMIN_PASSPHRASE=<a long random value>
 ```
 
