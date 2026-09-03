@@ -1713,17 +1713,27 @@
                     appendErrorBlock("Upstream connection offline. Ensure local Uvicorn process is running.");
                 }
             } finally {
+                // FOOLPROOF STATE RESET: Always clear locks first before touching DOM
                 currentAbortController = null;
                 window.isGenerating = false;
                 isSubmitting = false;
-                inputField.disabled = false;
-                inputField.placeholder = "Query structural timelines, metrics, policies... (Shift+Enter for new line)";
-                sendBtn.disabled = false;
-                sendBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-[10000] flex items-center justify-center touch-manipulation pointer-events-auto";
-                sendBtn.style.minWidth = '44px'; sendBtn.style.minHeight = '44px';
-                sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4 pointer-events-none"></i>`;
-                lucide.createIcons();
-                inputField.focus();
+                
+                try {
+                    if (inputField) {
+                        inputField.disabled = false;
+                        inputField.placeholder = "Query structural timelines, metrics, policies... (Shift+Enter for new line)";
+                        inputField.focus();
+                    }
+                    if (sendBtn) {
+                        sendBtn.disabled = false;
+                        sendBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-[10000] flex items-center justify-center touch-manipulation pointer-events-auto";
+                        sendBtn.style.minWidth = '44px'; sendBtn.style.minHeight = '44px';
+                        sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4 pointer-events-none"></i>`;
+                    }
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+                } catch (domErr) {
+                    console.error("Error during UI reset:", domErr);
+                }
             }
         }
 
