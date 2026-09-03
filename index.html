@@ -716,7 +716,7 @@
                     <div
                         class="flex-shrink-0 bg-gradient-to-t from-[#060814] via-[#080b16] to-transparent pt-4 pb-4 px-4 md:px-6 w-full z-50 border-t border-slate-800/50">
                         <div class="max-w-3xl mx-auto relative z-[9999] bg-[#0a1118] pb-2">
-                            <form id="chat-form" onsubmit="return false;"
+                            <form id="chat-form"
                                 class="relative flex items-end bg-slate-900/80 backdrop-blur-md border border-slate-700/60 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/20 rounded-xl transition-all shadow-2xl">
                                 <textarea id="user-input" rows="1"
                                     placeholder="Query structural timelines, metrics, policies... (Shift+Enter for new line)"
@@ -2275,35 +2275,6 @@
                         return;
                     }
                     submitQuery(e);
-                });
-            }
-
-            if (sendBtnEl) {
-                /* On mobile, touchend fires BEFORE click. We use touchend as the 
-                   primary mobile handler and flag it to prevent the subsequent 
-                   synthetic click from double-firing. */
-                let touchHandled = false;
-
-                sendBtnEl.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    touchHandled = true;
-                    if (isSubmitting) {
-                        if (currentAbortController) currentAbortController.abort();
-                    } else {
-                        submitQuery(e);
-                    }
-                    /* Reset after the browser's click synthesis window (300ms) */
-                    setTimeout(() => { touchHandled = false; }, 400);
-                }, { passive: false });
-
-                sendBtnEl.addEventListener('click', function(e) {
-                    if (touchHandled) return; /* Skip — already handled by touchend */
-                    e.preventDefault();
-                    if (isSubmitting) {
-                        if (currentAbortController) currentAbortController.abort();
-                    } else {
-                        submitQuery(e);
-                    }
                 });
             }
 
