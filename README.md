@@ -309,8 +309,8 @@ Ensure your `.env` contains:
 
 ```env
 GROQ_API_KEY=<your Groq API key>
-QDRANT_URL=<your Qdrant cluster URL>
-QDRANT_API_KEY=<your Qdrant API key>
+QDRANT_CLOUD_URL=<your Qdrant cluster URL>
+QDRANT_CLOUD_API_KEY=<your Qdrant API key>
 ADMIN_PASSPHRASE=<a long random value>
 ```
 
