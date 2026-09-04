@@ -13,7 +13,6 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Vision 2030 Policy Intelligence Hub</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -2095,39 +2094,48 @@
                         throw new Error(`Upload failed with status ${response.status}`);
                     }
 
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-                    for (const line of lines) {
-                        if (line.trim().startsWith('data: ')) {
-                            const payloadText = line.trim().substring(6);
-                            if (!payloadText) continue;
-                            try {
-                                const payload = JSON.parse(payloadText);
-                                if (payload.stage === 'error') {
-                                    statusLabel.innerText = `Ingestion Failed: ${payload.message}`;
-                                    progressBar.className = "bg-rose-500 h-1.5 rounded-full transition-all duration-300 ease-out";
-                                    return;
+                    // KICK OFF STREAM PROCESSING ASYNCHRONOUSLY SO MODAL CAN CLOSE IMMEDIATELY
+                    (async () => {
+                        try {
+                            const reader = response.body.getReader();
+                            const decoder = new TextDecoder();
+                            while (true) {
+                                const { value, done } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value);
+                                const lines = chunk.split('\n');
+                                for (const line of lines) {
+                                    if (line.trim().startsWith('data: ')) {
+                                        const payloadText = line.trim().substring(6);
+                                        if (!payloadText) continue;
+                                        try {
+                                            const payload = JSON.parse(payloadText);
+                                            if (payload.stage === 'error') {
+                                                statusLabel.innerText = `Ingestion Failed: ${payload.message}`;
+                                                progressBar.className = "bg-rose-500 h-1.5 rounded-full transition-all duration-300 ease-out";
+                                                return;
+                                            }
+                                            if (payload.progress !== undefined) progressBar.style.width = `${payload.progress}%`;
+                                            if (payload.message) statusLabel.innerText = payload.message;
+                                            if (payload.stage === 'complete') {
+                                                progressBar.className = "bg-emerald-500 h-1.5 rounded-full transition-all duration-300 ease-out";
+                                                await syncPipelineTelemetry();
+                                            }
+                                        } catch (e) { console.warn("Failed parsing SSE payload:", payloadText); }
+                                    }
                                 }
-                                if (payload.progress !== undefined) progressBar.style.width = `${payload.progress}%`;
-                                if (payload.message) statusLabel.innerText = payload.message;
-                                if (payload.stage === 'complete') {
-                                    progressBar.className = "bg-emerald-500 h-1.5 rounded-full transition-all duration-300 ease-out";
-                                    await syncPipelineTelemetry();
-                                }
-                            } catch (e) { console.warn("Failed parsing SSE payload:", payloadText); }
+                            }
+                        } catch (error) {
+                            statusLabel.innerText = `Upload Failed: ${error.message}`;
+                            progressBar.className = "bg-rose-500 h-1.5 rounded-full transition-all duration-300 ease-out";
                         }
-                    }
+                    })();
+
+                    return true;
+                } catch (error) {
+                    throw error;
                 }
-            } catch (error) {
-                statusLabel.innerText = `Upload Failed: ${error.message}`;
-                progressBar.className = "bg-rose-500 h-1.5 rounded-full transition-all duration-300 ease-out";
-            }
+            });
         }
 
         let undoTimeoutIds = {};
