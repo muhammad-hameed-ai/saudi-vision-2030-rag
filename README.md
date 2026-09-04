@@ -82,11 +82,11 @@ Free-tier containers sleep after 15 minutes. Measured cold start is ~52 s, so th
 ### Retrieval Quality
 *Measured against the deployed pipeline (generation by `allam-2-7b`, judged by `openai/gpt-oss-120b`).*
 
-The most significant achievement of this RAG architecture is a **+420% improvement in Faithfulness** (from a baseline of 0.10 up to 0.52) by utilizing Hybrid Retrieval, conditional HyDE query expansion, and careful context budgeting.
+The most significant achievement of this RAG architecture is a **+608% improvement in Faithfulness** (from a baseline of 0.10 up to 0.708) by utilizing Hybrid Retrieval, conditional HyDE query expansion, and careful context budgeting.
 
 | Metric | Value | What it measures |
 |:---|:---:|:---|
-| **Faithfulness** | `0.520` | Are the answer's claims supported by the retrieved context? |
+| **Faithfulness** | `0.708` | Are the answer's claims supported by the retrieved context? |
 | **Answer Relevancy** | `0.740` | Does the answer address the question? |
 | **Context Precision** | `0.368` | What share of retrieved chunks are useful? (set metric) |
 | **Precision@1** | `0.310` | How good is the top-ranked chunk? (rank metric) |
@@ -115,8 +115,8 @@ The most significant achievement of this RAG architecture is a **+420% improveme
 | **Origin Protection** | Strict CORS | Production and local development origins only. |
 | **Rate Limiting** | SlowAPI (per IP) | 10/min chat, 5/min ingest, 30/min registry. |
 | **Payload Hardening** | Pydantic V2 | Bounded lengths on every free-text schema field. |
-| **Write Authorisation** | `secrets.compare_digest` | Destructive routes (`DELETE`, `POST /ingest`) strictly require `ADMIN_PASSWORD`. |
-| **Fail-Closed Default** | Random fallback | If `ADMIN_PASSWORD` is unset, write routes are disabled. |
+| **Write Authorisation** | `secrets.compare_digest` | Destructive routes (`DELETE`, `POST /ingest`) strictly require `ADMIN_PASSPHRASE`. |
+| **Fail-Closed Default** | Random fallback | If `ADMIN_PASSPHRASE` is unset, write routes are disabled. |
 | **Upload Bounds** | 8 MB ceiling | Files are buffered in RAM; prevents memory exhaustion. |
 | **XSS Prevention** | DOMPurify | All model output is sanitised before `innerHTML` injection. |
 
@@ -171,7 +171,7 @@ Create a `.env` file in the project root:
 GROQ_API_KEY=<your Groq API key>
 QDRANT_CLOUD_URL=<your Qdrant cluster URL>
 QDRANT_CLOUD_API_KEY=<your Qdrant API key>
-ADMIN_PASSWORD=<a long secure passcode>
+ADMIN_PASSPHRASE=<a long secure passcode>
 ```
 
 Activate virtual environment and run:
