@@ -1592,9 +1592,9 @@
             }
 
             sendBtn.disabled = false;
-            sendBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer z-[100] flex items-center justify-center space-x-1 touch-manipulation pointer-events-auto";
-            sendBtn.style.minWidth = '44px'; sendBtn.style.minHeight = '44px';
-            sendBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-500 group-hover:text-white pointer-events-none"></i><i data-lucide="square" class="w-3.5 h-3.5 fill-current pointer-events-none"></i>`;
+            sendBtn.className = "shrink-0 flex items-center justify-center rounded-xl bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white hover:border-rose-500 border border-slate-700/60 backdrop-blur-md transition-all shadow-2xl cursor-pointer touch-manipulation space-x-1";
+            sendBtn.style.width = '50px'; sendBtn.style.height = '50px';
+            sendBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-500 pointer-events-none"></i><i data-lucide="square" class="w-3.5 h-3.5 fill-current pointer-events-none"></i>`;
             lucide.createIcons();
 
             const loadId = "load-" + Date.now();
@@ -1725,9 +1725,9 @@
                     }
                     if (sendBtn) {
                         sendBtn.disabled = false;
-                        sendBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center touch-manipulation pointer-events-auto z-[100]";
-                        sendBtn.style.minWidth = '44px'; sendBtn.style.minHeight = '44px';
-                        sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4 pointer-events-none"></i>`;
+                        sendBtn.className = "shrink-0 flex items-center justify-center rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700/60 text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all shadow-2xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation";
+                        sendBtn.style.width = '50px'; sendBtn.style.height = '50px';
+                        sendBtn.innerHTML = `<i data-lucide="send" class="w-5 h-5 pointer-events-none"></i>`;
                     }
                     if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
                 } catch (domErr) {
