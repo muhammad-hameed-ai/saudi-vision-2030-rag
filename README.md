@@ -2,7 +2,7 @@
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Qdrant](https://img.shields.io/badge/Qdrant-Vector_DB-EF4B4B?style=for-the-badge&logo=qdrant)](https://qdrant.tech/)
-[![Groq](https://img.shields.io/badge/Groq-Llama_3.2-F55036?style=for-the-badge)](https://groq.com/)
+[![Groq](https://img.shields.io/badge/Groq-ALLaM_2_7b-F55036?style=for-the-badge)](https://groq.com/)
 [![Render](https://img.shields.io/badge/Render-Deployed-46E3B7?style=for-the-badge)](https://render.com/)
 
 A production-grade Retrieval-Augmented Generation service for Saudi policy documents, engineered to run inside a 512 MB / 0.1 CPU envelope. Hybrid dense + sparse retrieval, true cosine relevance scoring, context-window budgeting, and streaming inference — with every reported metric measured rather than asserted.
@@ -48,9 +48,9 @@ Cosine remains the displayed confidence figure because it is a real similarity m
 | **Total response time** | 35,957 ms | **2,247 ms** |
 
 ### Retrieval: A Keyword Index Cannot Substring-Match
-The policy booster over-weights the core Vision 2030 documents to counteract term-frequency dominance from long financial circulars — two bond and sukuk prospectuses alone are 34% of the corpus. `metadata.source` must carry a keyword index because the document registry facets on it and deletion filters it by exact value. 
+The policy booster over-weights the core Vision 2030 documents to counteract term-frequency dominance from long financial circulars — two bond and sukuk prospectuses alone are 34% of the corpus. `metadata.source` must carry a keyword index because the document registry facets on it and deletion filters it by exact value.
 
-Qdrant permits one index per field, so `MatchText` returned 400 on every query, and a later `MatchAny(["vision2030"])` silently matched zero documents. The working implementation resolves the actual filenames once via `facet()`, caches them, and matches those exactly. 
+Qdrant permits one index per field, so `MatchText` returned 400 on every query, and a later `MatchAny(["vision2030"])` silently matched zero documents. The working implementation resolves the actual filenames once via `facet()`, caches them, and matches those exactly.
 
 ### Cold Starts: An Adaptive Stream Timeout
 Free-tier containers sleep after 15 minutes. Measured cold start is ~52 s, so the original flat 45 s frontend timeout guaranteed the first query after sleep always failed — and reported it as a backend crash. The first request of a page session now gets 120 s; subsequent requests stay at 45 s.
@@ -63,7 +63,7 @@ Free-tier containers sleep after 15 minutes. Measured cold start is ~52 s, so th
 1. **Query Normalisation:** Regex typo correction and domain keyword expansion.
 2. **Conditional HyDE:** Queries of 8 words or fewer are expanded into a hypothetical answer before embedding. Longer queries carry enough signal on their own and skip the round trip, saving ~2 s.
 3. **Hybrid Search:** A 384-dim dense vector (`all-MiniLM-L6-v2`) and a BM25 sparse vector drive three parallel prefetches, fused by Reciprocal Rank Fusion.
-4. **Cosine Scoring:** Dense vectors returned alongside results are scored locally for display. 
+4. **Cosine Scoring:** Dense vectors returned alongside results are scored locally for display.
 5. **Context Budgeting:** The highest-scoring chunks are packed into the tokens remaining after the system prompt, conversation memory, and the reserved response allowance.
 6. **Streaming Synthesis:** Tokens relay to the browser over SSE as Groq produces them.
 
@@ -98,12 +98,12 @@ The most significant achievement of this RAG architecture is a **+608% improveme
 
 | Document | Chunks | Share |
 |:---|---:|---:|
-| International sukuk offering circular 2025 | 1,112 | 17.7% |
-| International bond offering circular 2025 | 996 | 15.9% |
-| Vision 2030 annual report 2025 | 390 | 6.2% |
-| PIF annual report 2024 | 314 | 5.0% |
-| National strategy for data & AI | 277 | 4.4% |
-| *44 further documents* | *2,852* | *50.8%* |
+| International sukuk offering circular 2025 | 1,112 | 18.7% |
+| International bond offering circular 2025 | 996 | 16.8% |
+| Vision 2030 annual report 2025 | 390 | 6.6% |
+| PIF annual report 2024 | 314 | 5.3% |
+| National strategy for data & AI | 277 | 4.7% |
+| *44 further documents* | *2,852* | *48.0%* |
 
 ---
 
