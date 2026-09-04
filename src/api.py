@@ -670,7 +670,14 @@ async def ask(request: Request, payload: ChatRequest, background_tasks: Backgrou
 def read_index():
     """Serves index.html UI directly at the root path."""
     if INDEX_PATH and INDEX_PATH.exists():
-        return FileResponse(INDEX_PATH)
+        return FileResponse(
+            INDEX_PATH,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            }
+        )
     return JSONResponse(
         status_code=404,
         content={"error": "index.html static frontend page not found on server."}
