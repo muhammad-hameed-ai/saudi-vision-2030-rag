@@ -333,5 +333,13 @@
     "answer_relevancy": 0.75,
     "context_precision": 0.36,
     "hyde_enabled": true
+  },
+  {
+    "timestamp": "2026-09-04T07:09:57Z",
+    "commit": "ceba246",
+    "faithfulness": 0.71,
+    "answer_relevancy": 0.74,
+    "context_precision": 0.37,
+    "hyde_enabled": true
   }
 ]
