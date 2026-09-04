@@ -102,15 +102,15 @@ def get_groq_client() -> AsyncGroq:
         )
     return client
 
-# Resolved once at import. Falling back to a fresh random token per request would
-# silently lock the endpoint with no way to diagnose it, so we log the state.
-ADMIN_PASSPHRASE = os.getenv("ADMIN_PASSPHRASE")
+# Resolved once at import. Supports both ADMIN_PASSWORD and ADMIN_PASSPHRASE.
+# ADMIN_PASSWORD takes priority; ADMIN_PASSPHRASE is the legacy fallback.
+ADMIN_PASSPHRASE = os.getenv("ADMIN_PASSWORD") or os.getenv("ADMIN_PASSPHRASE")
 if not ADMIN_PASSPHRASE:
     ADMIN_PASSPHRASE = secrets.token_hex(16)
     logger.warning(
-        "ADMIN_PASSPHRASE is not configured. Document deletion is disabled: "
+        "ADMIN_PASSWORD / ADMIN_PASSPHRASE is not configured. Document mutation is disabled: "
         "the endpoint now requires an unguessable token that is never issued. "
-        "Set ADMIN_PASSPHRASE in the environment to enable it."
+        "Set ADMIN_PASSWORD in the environment to enable it."
     )
 
 startup_time: Optional[str] = None
@@ -549,7 +549,7 @@ def _require_admin(token: Optional[str]) -> None:
     free-tier quota, or drive the container out of memory.
     """
     if not token or not secrets.compare_digest(token, ADMIN_PASSPHRASE):
-        raise HTTPException(status_code=403, detail="Forbidden. Invalid administrative passcode.")
+        raise HTTPException(status_code=401, detail="Invalid admin password")
 
 
 @app.post("/api/chat")

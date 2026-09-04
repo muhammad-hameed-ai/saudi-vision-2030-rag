@@ -13,6 +13,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Vision 2030 Policy Intelligence Hub</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -864,6 +865,27 @@
     </div>
 
     <!-- Modals and Toasts -->
+    <div id="admin-auth-modal"
+        class="fixed inset-0 bg-[#060814]/80 backdrop-blur-sm z-[99999] flex items-center justify-center hidden p-4 transition-opacity">
+        <div class="w-full max-w-sm rounded-2xl border border-rose-500/30 bg-[#0a0d1a] p-6 shadow-2xl space-y-4">
+            <div class="flex items-center space-x-3 text-rose-400 border-b border-slate-800 pb-3">
+                <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                <h2 class="text-sm font-semibold uppercase tracking-wider">Admin Authentication</h2>
+            </div>
+            <p id="admin-auth-action-text" class="text-xs text-slate-400">Enter password to authorize action.</p>
+            <div class="space-y-2">
+                <input type="password" id="admin-password-input" placeholder="Enter admin password..."
+                    class="w-full bg-[#060814] border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-rose-400 focus:outline-none focus:border-rose-500/70 focus:ring-1 focus:ring-rose-500/30 shadow-inner transition-all">
+                <p id="admin-auth-error" class="text-xs text-rose-500 hidden font-medium">Incorrect admin password.</p>
+            </div>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button id="admin-auth-cancel"
+                    class="px-4 py-2 rounded-lg border border-transparent hover:bg-slate-800 text-slate-400 text-xs font-medium transition-colors cursor-pointer">Cancel</button>
+                <button id="admin-auth-confirm"
+                    class="px-5 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 text-xs font-semibold ring-1 ring-rose-500/30 transition-all cursor-pointer">Confirm</button>
+            </div>
+        </div>
+    </div>
     <div id="settings-modal"
         class="fixed inset-0 bg-[#060814]/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 transition-opacity">
         <div class="w-full max-w-md rounded-2xl border border-slate-700/50 bg-[#0a0d1a] p-6 shadow-2xl space-y-5">
@@ -1975,6 +1997,65 @@
             lucide.createIcons();
             thread.scrollTop = thread.scrollHeight;
         }
+        function promptAdminPassword(actionText, authCallback) {
+            const modal = document.getElementById("admin-auth-modal");
+            const actionTextEl = document.getElementById("admin-auth-action-text");
+            const input = document.getElementById("admin-password-input");
+            const error = document.getElementById("admin-auth-error");
+            const cancelBtn = document.getElementById("admin-auth-cancel");
+            const confirmBtn = document.getElementById("admin-auth-confirm");
+
+            actionTextEl.innerText = actionText || "Enter password to authorize action.";
+            input.value = "";
+            error.classList.add("hidden");
+            modal.classList.remove("hidden");
+            input.focus();
+
+            const cleanup = () => {
+                modal.classList.add("hidden");
+                cancelBtn.onclick = null;
+                confirmBtn.onclick = null;
+                input.onkeydown = null;
+            };
+
+            cancelBtn.onclick = () => cleanup();
+
+            confirmBtn.onclick = async () => {
+                const pass = input.value;
+                if (!pass) return;
+                
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`;
+                lucide.createIcons();
+                error.classList.add("hidden");
+                
+                try {
+                    const success = await authCallback(pass);
+                    if (success) {
+                        cleanup();
+                    } else {
+                        error.innerText = "Incorrect admin password.";
+                        error.classList.remove("hidden");
+                    }
+                } catch (e) {
+                    error.innerText = e.message || "Authentication failed.";
+                    error.classList.remove("hidden");
+                } finally {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = `Confirm`;
+                }
+            };
+
+            input.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    confirmBtn.click();
+                } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelBtn.click();
+                }
+            };
+        }
 
         async function uploadAndStreamIngest(file) {
             if (!file.name.endsWith('.pdf')) { alert("Only PDF documents are supported."); return; }
@@ -1982,32 +2063,41 @@
                 alert("This PDF exceeds the 8MB in-memory indexing limit. Index large documents locally instead.");
                 return;
             }
-            // Indexing writes to the same collection deletion guards, so it takes the
-            // same passcode.
-            const passcode = prompt("Administrative Access Required.\n\nEnter passcode to authorize indexing:");
-            if (!passcode) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            const container = document.getElementById('ingest-progress-container');
-            const progressBar = document.getElementById('ingest-progress-fill');
-            const statusLabel = document.getElementById('ingest-status-text');
 
-            container.classList.remove('hidden');
-            progressBar.style.width = '0%';
-            progressBar.className = "bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out";
-            statusLabel.innerText = "Connecting to Pipeline...";
+            promptAdminPassword("Enter password to authorize indexing:", async (passcode) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                const container = document.getElementById('ingest-progress-container');
+                const progressBar = document.getElementById('ingest-progress-fill');
+                const statusLabel = document.getElementById('ingest-status-text');
 
-            try {
-                const response = await fetch(`${BASE_BACKEND_URL}/api/ingest/stream`, {
-                    method: 'POST', body: formData, mode: 'cors',
-                    headers: { "X-Admin-Access-Token": passcode }
-                });
-                if (response.status === 403) throw new Error("Access denied: invalid administrative passcode.");
-                if (response.status === 413) throw new Error("File too large for in-memory indexing (8MB limit).");
-                if (!response.ok) throw new Error(`Upload failed with status ${response.status}`);
+                container.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressBar.className = "bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out";
+                statusLabel.innerText = "Connecting to Pipeline...";
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
+                try {
+                    const response = await fetch(`${BASE_BACKEND_URL}/api/ingest/stream`, {
+                        method: 'POST', body: formData, mode: 'cors',
+                        headers: { "X-Admin-Access-Token": passcode }
+                    });
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        container.classList.add('hidden');
+                        return false;
+                    }
+                    if (response.status === 413) {
+                        container.classList.add('hidden');
+                        throw new Error("File too large for in-memory indexing (8MB limit).");
+                    }
+                    if (!response.ok) {
+                        container.classList.add('hidden');
+                        throw new Error(`Upload failed with status ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
@@ -2101,29 +2191,34 @@
         });
 
         async function queueDocumentDeletion(filename) {
-            const passcode = prompt("Administrative Access Required.\n\nEnter passcode to authorize vector deletion:");
-            if (!passcode) return;
+            promptAdminPassword(`Enter password to authorize deletion of ${filename}:`, async (passcode) => {
+                try {
+                    const authRes = await fetch(`${BASE_BACKEND_URL}/api/documents/auth`, { headers: { "X-Admin-Access-Token": passcode } });
+                    if (authRes.status === 401 || authRes.status === 403) {
+                        return false;
+                    }
+                    if (!authRes.ok) { throw new Error("Network error during authentication."); }
+                    
+                    const row = document.querySelector(`.directory-row[data-filename="${filename}"]`);
+                    if (!row) return true;
 
-            try {
-                const authRes = await fetch(`${BASE_BACKEND_URL}/api/documents/auth`, { headers: { "X-Admin-Access-Token": passcode } });
-                if (!authRes.ok) { alert("Access Denied: Invalid Administrative Passcode."); return; }
-            } catch (e) { alert("Network error during authentication."); return; }
+                    row.classList.add("hidden");
+                    const chunks = parseInt(row.getAttribute("data-chunks")) || 0;
+                    const docLoaderNode = document.getElementById("pipe-docs");
+                    const chunkLoaderNode = document.getElementById("pipe-chunks");
 
-            const row = document.querySelector(`.directory-row[data-filename="${filename}"]`);
-            if (!row) return;
+                    if (docLoaderNode) docLoaderNode.innerText = Math.max(0, parseInt(docLoaderNode.innerText) - 1);
+                    if (chunkLoaderNode) {
+                        const currentChunks = parseInt(chunkLoaderNode.innerText.replace(/,/g, '')) || 0;
+                        chunkLoaderNode.innerText = Math.max(0, currentChunks - chunks).toLocaleString();
+                    }
 
-            row.classList.add("hidden");
-            const chunks = parseInt(row.getAttribute("data-chunks")) || 0;
-            const docLoaderNode = document.getElementById("pipe-docs");
-            const chunkLoaderNode = document.getElementById("pipe-chunks");
-
-            if (docLoaderNode) docLoaderNode.innerText = Math.max(0, parseInt(docLoaderNode.innerText) - 1);
-            if (chunkLoaderNode) {
-                const currentChunks = parseInt(chunkLoaderNode.innerText.replace(/,/g, '')) || 0;
-                chunkLoaderNode.innerText = Math.max(0, currentChunks - chunks).toLocaleString();
-            }
-
-            showUndoToast(filename, row, chunks, passcode);
+                    showUndoToast(filename, row, chunks, passcode);
+                    return true;
+                } catch (e) {
+                    throw e;
+                }
+            });
         }
 
         function showUndoToast(filename, row, chunks, passcode) {
